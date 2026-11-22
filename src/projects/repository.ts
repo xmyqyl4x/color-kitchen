@@ -3,10 +3,11 @@ import type { ClientBase } from 'pg';
 import { commandReplay, completeCommand, currentOperationId, recordAudit, reserveCommand, valueDigest,
   type Command, type StoredActor } from '../db/command-receipts.js';
 import { inTransaction } from '../db/transaction.js';
-import { themeRoleKeys, themeSnapshot, type ThemeSnapshot } from './snapshot.js';
+import { allowsThemeAction, planThemeTransition, type ProjectRole } from './lifecycle.js';
+import { themeSnapshot, type ThemeSnapshot } from './snapshot.js';
 
 export type ProjectActor = StoredActor;
-export type ProjectRole = 'owner' | 'editor' | 'viewer';
+export type { ProjectRole } from './lifecycle.js';
 type Asset = { assetId: string; name: string; headRevision: number | null; version: string };
 type Revision = { revision: number; schemaVersion: number; payload: ThemeSnapshot; digest: string };
 export type ReleasedTheme = Revision & { releaseId: string };
@@ -107,7 +108,7 @@ export async function saveThemeRevision(client: ClientBase, actor: ProjectActor,
   const hash = valueDigest([assetId, principalId, expectedRevision, name, digest, source]);
   return inTransaction(client, async () => {
     const role = await lockMembership(client, actor, projectId);
-    if (role !== 'owner' && role !== 'editor') return { status: 'unavailable' };
+    if (!allowsThemeAction(role, 'edit')) return { status: 'unavailable' };
     const asset = await lockTheme(client, organizationId, projectId, assetId);
     if (asset) {
       const { rows: [replay] } = await client.query<{ rev: number; digest: string; request_hash: string }>(
@@ -148,7 +149,8 @@ export async function changeThemeRelease(client: ClientBase, actor: ProjectActor
   const command: Command = { operationId, command: 'theme.' + type, kind: 'theme', resourceId: assetId,
     hash: valueDigest([projectId, expectedVersion, targetReleaseId, revision, audience, confirm]) };
   return inTransaction(client, async () => {
-    if (await lockMembership(client, actor, projectId) !== 'owner') return { status: 'unavailable' };
+    const role = await lockMembership(client, actor, projectId);
+    if (!allowsThemeAction(role, type)) return { status: 'unavailable' };
     const asset = await lockTheme(client, organizationId, projectId, assetId);
     if (!asset) return { status: 'unavailable' };
     const replay = await commandReplay<ReleaseResult>(client, actor, command);
@@ -158,14 +160,14 @@ export async function changeThemeRelease(client: ClientBase, actor: ProjectActor
     const { rows: [active] } = await client.query<{ releaseId: string; rev: number }>(
       `SELECT release_id AS "releaseId",rev FROM ck.asset_release
        WHERE organization_id=$1 AND project_id=$2 AND asset_id=$3 AND withdrawn_at IS NULL`, scope);
-    if (type === 'withdraw' && active?.releaseId !== targetReleaseId) return { status: 'conflict' };
-    if (type === 'release') {
-      const { rows: [saved] } = await client.query<{ payload: ThemeSnapshot }>(
-        'SELECT payload FROM ck.asset_revision WHERE organization_id=$1 AND project_id=$2 AND asset_id=$3 AND rev=$4',
-        [...scope, revision]);
-      if (!saved || !themeRoleKeys.every(key => saved.payload.roles[key]) ||
-          (audience !== 'project' && (audience !== 'public' || !confirm))) return { status: 'invalid' };
-    }
+    const saved = type === 'release' ? (await client.query<{ payload: ThemeSnapshot }>(
+      'SELECT payload FROM ck.asset_revision WHERE organization_id=$1 AND project_id=$2 AND asset_id=$3 AND rev=$4',
+      [...scope, revision])).rows[0] : undefined;
+    const decision = planThemeTransition({ organizationId, projectId, role }, {
+      organizationId, projectId, version: asset.version, headRevision: asset.headRevision ?? 0,
+      archived: false, activeReleaseId: active?.releaseId ?? null,
+    }, input.type === 'release' ? { ...input, snapshot: saved?.payload ?? null } : input);
+    if (decision.status !== 'allowed') return decision;
     if (!await reserveCommand(client, actor, command)) return { status: 'conflict' };
     const releaseId = input.type === 'release' ? randomUUID() : input.releaseId;
     if (active) await client.query(`UPDATE ck.asset_release SET withdrawn_at=now(),withdrawn_by=$4
