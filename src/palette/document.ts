@@ -39,7 +39,7 @@ function checkRole(role: string) {
   if (role.length > 80 || !roleName.test(role)) throw new RangeError('Invalid palette role key.');
 }
 
-function checkPalette(palette: Palette) {
+export function checkPalette(palette: Palette) {
   const { swatches, roles } = palette;
   if (!Array.isArray(swatches) || swatches.length < minSwatches || swatches.length > maxSwatches ||
       typeof roles !== 'object' || roles === null || Array.isArray(roles)) {

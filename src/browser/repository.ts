@@ -1,4 +1,5 @@
 import { WorkspaceStorageError, stores } from './database.js';
+import { BackupError, previewBackup } from './backup.js';
 import type { Collection, CreativeDocument, StoredAsset, StoredPreference } from './document.js';
 
 type StoreName = typeof stores[keyof typeof stores];
@@ -119,6 +120,17 @@ export function workspaceRepository(database: IDBDatabase) {
     async getCollection(id: string) {
       const record = await readRecord<StoredCollection>(stores.collections, id);
       return record ? { ...record, revision: record.revision ?? 1 } : null;
+    },
+
+    async restoreBackup(text: string) {
+      const { documents, collections, assets, omittedAssetIds } = previewBackup(text);
+      if (omittedAssetIds.length) throw new BackupError('missing-assets', 'Restore requires all referenced images.');
+      return transact(database, [stores.documents, stores.assets, stores.collections], 'readwrite', async transaction => {
+        for (const asset of assets) await requestResult(transaction.objectStore(stores.assets).add(asset));
+        for (const document of documents) await requestResult(transaction.objectStore(stores.documents).add(document));
+        for (const collection of collections) await requestResult(transaction.objectStore(stores.collections).add(collection));
+        return { documentCount: documents.length, collectionCount: collections.length };
+      });
     },
 
     async saveDocument<T extends CreativeDocument>(input: T, options: {

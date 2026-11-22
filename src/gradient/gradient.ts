@@ -15,18 +15,20 @@ export type Gradient = Readonly<{
 }>;
 export type GradientBounds = Readonly<{ width: number; height: number }>;
 
-function validate(gradient: Gradient) {
+export function validateGradient(gradient: Gradient) {
   const { type, center, angle, interpolation, huePath, stops } = gradient;
   if (!['linear', 'radial', 'conic'].includes(type) ||
       (interpolation !== 'srgb' && interpolation !== 'oklch') ||
       (huePath !== undefined && !['shorter', 'longer', 'increasing', 'decreasing'].includes(huePath)) ||
       (angle !== undefined && !Number.isFinite(angle)) ||
-      (center !== undefined && (center.length !== 2 || !center.every(value => inRange(value)))) ||
-      stops.length < 2 || stops.length > 12) throw new RangeError('Invalid gradient settings.');
+      (center !== undefined && (!Array.isArray(center) || center.length !== 2 || !center.every(value => inRange(value)))) ||
+      !Array.isArray(stops) || stops.length < 2 || stops.length > 12) throw new RangeError('Invalid gradient settings.');
   const ids = new Set<string>();
   let previous = 0;
   for (const { id, position, color } of stops) {
-    if (!id || ids.has(id) || !inRange(position, previous, 1)) throw new RangeError('Stops need unique IDs and ordered positions.');
+    if (typeof id !== 'string' || !id || ids.has(id) || !inRange(position, previous, 1)) {
+      throw new RangeError('Stops need unique IDs and ordered positions.');
+    }
     assertColor(color);
     ids.add(id);
     previous = position;
@@ -68,7 +70,7 @@ function mix(left: ColorValue, right: ColorValue, t: number, huePath: HuePath): 
 }
 
 export function prepareGradient(gradient: Gradient) {
-  validate(gradient);
+  validateGradient(gradient);
   const stops = converted(gradient);
   const huePath = gradient.huePath ?? 'shorter';
   return (position: number): ColorValue => {
@@ -93,7 +95,7 @@ export function sampleGradient(gradient: Gradient, count: number) {
 }
 
 export function reverseGradient(gradient: Gradient): Gradient {
-  validate(gradient);
+  validateGradient(gradient);
   const huePath = gradient.huePath === 'increasing' ? 'decreasing' : gradient.huePath === 'decreasing' ? 'increasing' : gradient.huePath;
   return { ...gradient, huePath, stops: [...gradient.stops].reverse().map(stop => ({ ...stop, position: 1 - stop.position })) };
 }
@@ -128,7 +130,7 @@ export function gradientPointSampler(gradient: Gradient, bounds: GradientBounds)
 }
 
 export function gradientCss(gradient: Gradient) {
-  validate(gradient);
+  validateGradient(gradient);
   const [x, y] = gradient.center ?? [0.5, 0.5];
   const center = `at ${x * 100}% ${y * 100}%`;
   const angle = wrapHue(gradient.angle ?? (gradient.type === 'linear' ? 180 : 0));
@@ -140,7 +142,7 @@ export function gradientCss(gradient: Gradient) {
 }
 
 export function gradientSvg(gradient: Gradient, bounds: GradientBounds) {
-  validate(gradient);
+  validateGradient(gradient);
   const { x, y, dx, dy, half, radius } = geometry(gradient, bounds);
   const stops = converted(gradient);
   const unequalAlpha = stops.some((stop, index) => {

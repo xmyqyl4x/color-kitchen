@@ -32,4 +32,5 @@ export type BackupEnvelope = Readonly<{
   documents: readonly CreativeDocument[];
   collections: readonly Collection[];
   assets: readonly Readonly<{ id: string; mediaType: string; dataBase64: string }>[];
+  omittedAssetIds?: readonly string[];
 }>;
