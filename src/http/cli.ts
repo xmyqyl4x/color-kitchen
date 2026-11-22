@@ -6,6 +6,7 @@ import { guideHttp, guidePath } from './guide.js';
 import { catalogHttp } from './public-catalog.js';
 import { operationsHttp } from './operations.js';
 import { httpServer } from './server.js';
+import { webHttp } from '../web/http.js';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error('Set DATABASE_URL to a migrated Color Kitchen database.');
@@ -53,9 +54,12 @@ const operations = operationsHttp({
     retentionMs: contactDays * 86_400_000 },
   consentKey: secret('COLOR_KITCHEN_CONSENT_KEY'), eventKey: secret('COLOR_KITCHEN_EVENT_KEY'),
 });
+const web = webHttp({ withClient });
 const server = httpServer(async request => {
-  if (new URL(request.url).pathname === guidePath) return guide(request);
-  return await operations(request) ?? catalog(request);
+  const { pathname } = new URL(request.url);
+  if (pathname === guidePath) return guide(request);
+  if (pathname.startsWith('/api/')) return await operations(request) ?? catalog(request);
+  return web(request);
 },
   process.env.COLOR_KITCHEN_ORIGIN ?? 'http://localhost:' + port);
 server.listen(port, process.env.HOST ?? '127.0.0.1', () => console.log('Color Kitchen HTTP server listening on port ' + port));
