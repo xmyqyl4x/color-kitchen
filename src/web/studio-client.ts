@@ -12,6 +12,9 @@ import { maxSwatches, minSwatches, type Temperature } from '../palette/generate.
 import { readActiveDraft, storeActivePalette } from './draft.js';
 import { webText } from './strings.js';
 import { studioRoles, studioText } from './studio-text.js';
+import { openExportDrawer } from './export-drawer.js';
+import { collectionText } from './collection-text.js';
+import { node, press } from './ui.js';
 
 const locale = isLocale(document.documentElement.lang) ? document.documentElement.lang : 'en';
 const t = (key: Parameters<typeof studioText>[1]) => studioText(locale, key);
@@ -316,4 +319,35 @@ button('studio-backup').addEventListener('click', () => {
   const value = api.snapshot().document;
   media.files.download(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }), 'color-kitchen-palette.json');
 });
+button('studio-export').addEventListener('click', () => openExportDrawer(locale, api.snapshot().document));
 if (!sync() || !repository) status.textContent = messages[locale]['editing.error.storage'];
+if (location.hash.startsWith('#palette=')) {
+  try {
+    const palette = media.export.readPaletteShare(location.hash);
+    const dialog = node('dialog', undefined, 'export-drawer');
+    const heading = node('h2', collectionText(locale, 'shared'));
+    heading.id = 'shared-title';
+    dialog.setAttribute('aria-labelledby', heading.id);
+    const preview = node('textarea');
+    preview.rows = 7;
+    preview.readOnly = true;
+    preview.setAttribute('aria-label', collectionText(locale, 'content'));
+    preview.value = media.export.paletteShare(palette).text;
+    const actions = node('div', undefined, 'studio-actions');
+    actions.append(press(collectionText(locale, 'close'), () => dialog.close()),
+      press(collectionText(locale, 'open'), () => {
+        if (initialDraft && api.snapshot().dirty && !confirm(collectionText(locale, 'confirmOpen'))) return;
+        api.openCopy({ ...initial, palette }, collectionText(locale, 'shared'), true);
+        name.value = api.snapshot().document.name;
+        sync();
+        dialog.close();
+      }, true));
+    dialog.append(heading, preview, actions);
+    dialog.addEventListener('close', () => {
+      history.replaceState(null, '', location.pathname + location.search);
+      dialog.remove();
+    });
+    document.body.append(dialog);
+    dialog.showModal();
+  } catch { status.textContent = collectionText(locale, 'invalid'); }
+}

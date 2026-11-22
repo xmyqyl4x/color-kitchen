@@ -3,6 +3,7 @@ import type { Locale } from '../model/locales.js';
 import { html, pathFor } from './shell.js';
 import { studioRoles, studioText } from './studio-text.js';
 import { screenTitle } from './strings.js';
+import { collectionText } from './collection-text.js';
 
 export function paletteStudio(locale: Locale) {
   const t = (key: Parameters<typeof studioText>[1]) => html(studioText(locale, key));
@@ -57,6 +58,7 @@ export function paletteStudio(locale: Locale) {
     <div class="studio-bottom">
       <a class="secondary-link" href="${pathFor(locale, 'contrast')}" data-focus-key="studio-contrast">${html(screenTitle(locale, 'contrast'))}</a>
       <a class="secondary-link" href="${pathFor(locale, 'design-preview')}" data-focus-key="studio-design">${html(screenTitle(locale, 'design-preview'))}</a>
+      <button type="button" class="button" id="studio-export">${html(collectionText(locale, 'export'))}</button>
       <button type="button" class="button" id="studio-backup">${t('backup')}</button>
     </div>
   </div>`;

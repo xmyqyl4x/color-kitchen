@@ -8,6 +8,7 @@ type DocumentBase = Readonly<{
   revision: number;
   name: string;
   updatedAt: number;
+  tags?: readonly string[];
 }>;
 
 export type PaletteDocument = DocumentBase & Readonly<{ kind: 'palette'; palette: Palette }>;
