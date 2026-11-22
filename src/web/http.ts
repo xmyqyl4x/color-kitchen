@@ -4,7 +4,7 @@ import { slugPattern } from '../catalog/repository.js';
 import type { CatalogHttpDependencies } from '../http/public-catalog.js';
 import { resolveLocale } from '../i18n/resolve.js';
 import { isLocale } from '../model/locales.js';
-import { homeScreen, html, pathFor, renderShell } from './shell.js';
+import { approvedAdFrame, homeScreen, html, pathFor, renderShell } from './shell.js';
 import { screenRoutes, screenTitle, webText, type Screen } from './strings.js';
 import { paletteStudio } from './studio.js';
 import { collectionScreen } from './collection.js';
@@ -15,9 +15,9 @@ import { discoveryKinds, discoveryPage } from './discovery.js';
 import { gradientToolsScreen } from './gradient-tools.js';
 import { fontToolsPage } from './font-tools.js';
 import { guideScreen } from './guide.js';
+import { publishedPolicy, trustScreen } from './trust.js';
 
 const knownScreens = new Set<string>(screenRoutes);
-const policySlugs = new Set(['licensing', 'terms', 'privacy', 'cookies']);
 const fileRoutes: Record<string, [string, string]> = {
   '/assets/kitchen.css': ['../../../src/web/kitchen.css', 'text/css; charset=utf-8'],
   '/assets/source-sans.woff2': ['../../../catalog/fonts/SourceSans3-Regular.woff2', 'font/woff2'],
@@ -25,7 +25,7 @@ const fileRoutes: Record<string, [string, string]> = {
   '/assets/fonts/SourceSans3-Regular.woff2': ['../../../catalog/fonts/SourceSans3-Regular.woff2', 'font/woff2'],
   '/vendor/pdf-lib.js': ['../../../node_modules/pdf-lib/dist/pdf-lib.esm.min.js', 'text/javascript; charset=utf-8'],
 };
-const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/messages|guide\/(?:local|response)|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text|ui|collection-client|collection-text|export-drawer|image-tools-client|image-tools-text|color-tools-client|color-tools-text|preview-tools-client|preview-tools-text|discovery-client|discovery-text|gradient-tools-client|gradient-tools-text|font-tools-client|font-tools-text|guide-client|guide-text))\.js$/;
+const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/messages|guide\/(?:local|response)|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text|ui|collection-client|collection-text|export-drawer|image-tools-client|image-tools-text|color-tools-client|color-tools-text|preview-tools-client|preview-tools-text|discovery-client|discovery-text|gradient-tools-client|gradient-tools-text|font-tools-client|font-tools-text|guide-client|guide-text|trust-client|trust-text|ad-client))\.js$/;
 
 async function webFile(request: Request, path: string) {
   const asset = Object.hasOwn(fileRoutes, path) ? fileRoutes[path] : undefined;
@@ -44,9 +44,10 @@ function navigationLocale(request: Request) {
   return resolveLocale({ saved, browser: request.headers.get('accept-language') ?? undefined }).locale;
 }
 
-export function webHttp(dependencies: CatalogHttpDependencies) {
+export function webHttp(dependencies: CatalogHttpDependencies & { adFrameUrl?: string }) {
   const discovery = discoveryPage(dependencies);
   const fonts = fontToolsPage(dependencies);
+  const adFrame = approvedAdFrame(dependencies.adFrameUrl);
 
   return async (request: Request) => {
     const url = new URL(request.url);
@@ -74,7 +75,7 @@ export function webHttp(dependencies: CatalogHttpDependencies) {
     if (!route || !isLocale(first) || !knownScreens.has(screen) || (entry && (entry.length > 100 || !slugPattern.test(entry)))) return missing();
     const namedScreen = screen as Screen;
     const title = screenTitle(locale, namedScreen);
-    const base = { locale, screen: namedScreen, title, slug: entry };
+    const base = { locale, screen: namedScreen, title, slug: entry, adFrame };
     if (!screen && !entry) return renderShell(request, { ...base, content: homeScreen(locale), index: true });
     if (screen === 'palette-studio' && !entry) return renderShell(request, { ...base, content: paletteStudio(locale),
       index: true, module: '/src/web/studio-client.js' });
@@ -95,6 +96,10 @@ export function webHttp(dependencies: CatalogHttpDependencies) {
     if (screen === 'color-guide' && !entry) return renderShell(request, {
       ...base, content: guideScreen(locale), module: '/src/web/guide-client.js', index: true,
     });
+    if ((screen === 'cookie-preferences' || screen === 'contact' || screen === 'advertise') && !entry) {
+      return renderShell(request, { ...base, content: trustScreen(locale, screen),
+        module: '/src/web/trust-client.js', index: screen !== 'cookie-preferences' });
+    }
     try {
       if (Object.hasOwn(discoveryKinds, screen)) {
         const result = await discovery(request, screen as keyof typeof discoveryKinds, locale, entry);
@@ -106,13 +111,9 @@ export function webHttp(dependencies: CatalogHttpDependencies) {
         return result ? renderShell(request, { ...base, ...result, module: '/src/web/font-tools-client.js' }) : missing();
       }
       if (entry) return missing();
-      if (policySlugs.has(screen)) {
+      if (screen === 'licensing' || screen === 'terms' || screen === 'privacy' || screen === 'cookies') {
         const found = await dependencies.withClient(client => publicCatalogDetail(client, 'policy', screen, locale));
-        if (found) {
-          const { title, summary, body } = found.entry;
-          const content = heading(title) + '<p>' + html(summary) + '</p>' + (body ? '<p>' + html(body) + '</p>' : '');
-          return renderShell(request, { ...base, title, content, description: summary, index: true });
-        }
+        return renderShell(request, { ...base, ...publishedPolicy(locale, screen, found?.entry) });
       }
     } catch {
       return renderShell(request, { ...base, content: heading(title) + notice('loadError'), status: 503 });

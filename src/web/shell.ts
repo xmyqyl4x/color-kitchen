@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { advertisingEligibility } from '../operations/consent.js';
+import { trustText } from './trust-text.js';
 import { locales, type Locale } from '../model/locales.js';
 import { createRoutes, exploreRoutes, helpRoutes, languageNames, screenTitle, webText, type Screen } from './strings.js';
 
@@ -13,6 +15,15 @@ const policy = "default-src 'self'; script-src 'self' 'sha256-" + importMapHash 
 
 export const pathFor = (locale: Locale, screen: Screen, slug?: string) =>
   '/' + locale + (screen ? '/' + screen : '') + (slug ? '/' + slug : '');
+
+export function approvedAdFrame(config?: string) {
+  if (!config) return undefined;
+  const url = new URL(config);
+  if (url.protocol !== 'https:' || url.username || url.password || url.href.length > 2048) {
+    throw new RangeError('Ad frame configuration requires an approved HTTPS URL.');
+  }
+  return url;
+}
 
 function link(locale: Locale, path: Screen, label: string, key: string, className = '') {
   return '<a class="' + className + '" data-focus-key="' + key + '" href="' + pathFor(locale, path) + '">' + html(label) + '</a>';
@@ -60,12 +71,19 @@ export function homeScreen(locale: Locale) {
 
 export function renderShell(request: Request, options: Readonly<{
   locale: Locale; screen: Screen; title: string; content: string; slug?: string; index?: boolean;
-  status?: number; description?: string; module?: string;
+  status?: number; description?: string; module?: string; adFrame?: URL;
 }>) {
   const { locale, screen, slug, title, content, index = false, status = 200, module } = options;
   const t = (key: Parameters<typeof webText>[1]) => html(webText(locale, key));
   const url = new URL(request.url);
   const canonical = pathFor(locale, screen, slug);
+  const ad = status === 200 && options.adFrame && advertisingEligibility({ route: screen, viewportWidth: 1280,
+    consent: { advertising: true, analytics: false }, approvedProvider: true, documentHasAdScript: false }).placement
+    ? options.adFrame : undefined;
+  const adLabel = html(trustText(locale, 'ads'));
+  const main = '<main id="main" tabindex="-1">' + content + '</main>';
+  const layout = ad ? '<div class="ad-layout">' + main + '<aside class="ad-frame" data-ad-frame="' + html(ad.href) +
+      '" data-ad-route="' + screen + '" aria-label="' + adLabel + '"><p>' + adLabel + '</p></aside></div>' : main;
   const alternate = index ? [
     '<link rel="canonical" href="' + html(new URL(canonical, url).href) + '">',
     ...locales.map(value => '<link rel="alternate" hreflang="' + value +
@@ -87,6 +105,7 @@ export function renderShell(request: Request, options: Readonly<{
     ${alternate}<link rel="stylesheet" href="/assets/kitchen.css">
     <script type="importmap">${importMap}</script><script type="module" src="/src/web/shell-client.js"></script>
     ${module ? '<script type="module" src="' + html(module) + '"></script>' : ''}
+    ${ad ? '<script type="module" src="/src/web/ad-client.js"></script>' : ''}
     </head><body>
     <a class="skip" href="#main">${t('skip')}</a>
     <header class="site-header"><div class="header-inner">
@@ -103,14 +122,15 @@ export function renderShell(request: Request, options: Readonly<{
         </details>
       </div>
     </div></header>
-    <main id="main" tabindex="-1">${content}</main>
+    ${layout}
     <footer><div class="site-footer"><p>Color Kitchen</p><nav aria-label="${t('help')}">
       ${helpRoutes.map(screen => link(locale, screen, screenTitle(locale, screen), 'help-' + screen)).join('')}
     </nav></div></footer>
     </body></html>`;
   return new Response(request.method === 'HEAD' ? null : markup, { status, headers: {
     'Content-Type': 'text/html; charset=utf-8', 'Content-Language': locale,
-    'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': policy,
+    'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Content-Security-Policy': policy + '; frame-src ' + (ad?.origin ?? "'none'"),
     'Set-Cookie': 'ck_locale=' + locale + '; Path=/; Max-Age=31536000; SameSite=Lax' + (url.protocol === 'https:' ? '; Secure' : ''),
   } });
 }
