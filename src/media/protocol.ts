@@ -18,7 +18,8 @@ export type MediaTask =
   | { kind: 'sample'; source: Blob; point: ImagePoint; backing?: ColorValue }
   | { kind: 'image-preview'; source: Blob; region?: ImageRegion; maxSide?: number }
   | { kind: 'design-preview'; template: Template; variant: PreviewVariant; palette: Palette; format?: MediaFormat }
-  | { kind: 'moodboard'; input: Omit<MoodboardInput, 'images'> & { images: readonly BoardSource[] }; format?: MediaFormat };
+  | { kind: 'moodboard'; input: Omit<MoodboardInput, 'images'> & { images: readonly BoardSource[] }; format?: MediaFormat;
+      backing?: ColorValue };
 
 type Dimensions = Readonly<{ width: number; height: number }>;
 export type MediaResults = {

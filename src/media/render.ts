@@ -1,7 +1,7 @@
 import { colorCss } from '../color/css.js';
 import { toHex } from '../color/convert.js';
 import { checkContrast } from '../color/contrast.js';
-import { parseColor } from '../color/parse.js';
+import { assertColor, parseColor } from '../color/parse.js';
 import type { ColorValue } from '../model/color.js';
 import { composePreview, type Rect } from '../preview/layout.js';
 import { composeMoodboard, coverCrop, maxRasterPixels } from '../preview/moodboard.js';
@@ -13,16 +13,23 @@ const white = parseColor('#fff');
 const black = parseColor('#000');
 
 export async function paintCanvas(width: number, height: number, format: MediaFormat,
-    paint: (context: Context) => void | Promise<void>) {
+    paint: (context: Context) => void | Promise<void>, backing?: ColorValue) {
+  if (![width, height].every(value => Number.isInteger(value) && value > 0)) {
+    throw new MediaJobError('render', 'The export needs positive integral dimensions.');
+  }
   if (width > 8192 || height > 8192 || width * height > maxRasterPixels) {
     throw new MediaJobError('too-large', 'The export exceeds the local raster bounds.');
   }
   if (format !== 'png' && format !== 'jpeg') throw new MediaJobError('format', 'Choose a PNG or JPEG export.');
+  if (backing) {
+    assertColor(backing);
+    if (backing.alpha !== 1) throw new MediaJobError('format', 'The export backing must be opaque.');
+  }
   const canvas = new OffscreenCanvas(width, height);
   try {
     const context = canvas.getContext('2d');
     if (!context) throw new MediaJobError('unavailable', 'Canvas rendering is unavailable.');
-    if (format === 'jpeg') fill(context, { x: 0, y: 0, width, height }, white);
+    if (backing) fill(context, { x: 0, y: 0, width, height }, backing);
     await paint(context);
     const type = format === 'png' ? 'image/png' : 'image/jpeg';
     const blob = await canvas.convertToBlob({ type, quality: 0.92 });
@@ -67,7 +74,11 @@ export async function renderMoodboard(task: Extract<MediaTask, { kind: 'moodboar
   const sources: { image: (typeof images)[number]; header: Awaited<ReturnType<typeof inspectLocalImage>> }[] = [];
   for (const image of images) sources.push({ image, header: await inspectLocalImage(image.source) });
   const plan = composeMoodboard({ ...layout, images: sources.map(({ image, header }) => ({ ...image, ...header })) });
-  const opaqueBacking = checkContrast(white, plan.background, white).background;
+  if (task.format === 'jpeg' && plan.background.alpha < 1 && !task.backing) {
+    throw new MediaJobError('format', 'Choose an opaque backing for a transparent JPEG export.');
+  }
+  const backing = task.backing ?? white;
+  const opaqueBacking = checkContrast(backing, plan.background, backing).background;
   return paintCanvas(plan.width, plan.height, task.format ?? 'png', async context => {
     fill(context, { x: 0, y: 0, width: plan.width, height: plan.height }, plan.background);
     for (const [index, frame] of plan.frames.entries()) {
@@ -84,5 +95,5 @@ export async function renderMoodboard(task: Extract<MediaTask, { kind: 'moodboar
       if (swatch.showLegend) label(context, swatch.rect, toHex(swatch.color).hex, readableInk(swatch.color, opaqueBacking), 12);
     }
     if (plan.caption) label(context, plan.caption.rect, plan.caption.text, readableInk(opaqueBacking), 16);
-  });
+  }, task.backing);
 }
