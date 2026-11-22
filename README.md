@@ -4,6 +4,8 @@
 
 Use Node.js from [.node-version](.node-version) and a disposable PostgreSQL 18 instance. Run `npm ci` and `docker compose up -d --wait postgres`. For integration tests, set `COLOR_KITCHEN_TEST_DATABASE_URL` to `postgresql://ck_dev:ck_dev_local@127.0.0.1:55432/color_kitchen_test` and run `npm test`. The test runner creates and drops uniquely named databases in that isolated instance. A local PostgreSQL 18 installation with a disposable `color_kitchen_test` database and a role allowed to create databases also works.
 
+Install the integration browser using `npx playwright install chromium`. To use a local Chromium installation, set `COLOR_KITCHEN_CHROMIUM_EXECUTABLE` to its executable path.
+
 Run `npm run db:migrate` with `DATABASE_URL` set to an intended development database. The command reports the verified schema head and migrations applied. See the [database runbook](docs/database.md) and [technology register](docs/technology.md).
 
 ## Design package
