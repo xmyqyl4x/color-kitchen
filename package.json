@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "start": "node dist/src/http/cli.js",
     "typecheck": "tsc --noEmit",
     "db:migrate": "npm run build --silent && node dist/src/db/cli.js",
     "db:seed": "npm run build --silent && node dist/src/catalog/seed-cli.js",
