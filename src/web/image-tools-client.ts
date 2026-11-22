@@ -30,6 +30,7 @@ const media = createBrowserMedia();
 const canvas = get<HTMLCanvasElement>('image-canvas');
 const boardPreview = get<HTMLImageElement>('board-preview');
 let active: AbortController | undefined;
+let saving = false;
 let current: { source: Blob; preview: MediaResults['image-preview'] } | undefined;
 let extracted: ColorValue[] = [];
 let assets: StoredAsset[] = [];
@@ -47,11 +48,18 @@ function number(id: string) {
 const region = () => ({ x: number('crop-x'), y: number('crop-y'), width: number('crop-width'), height: number('crop-height') });
 const readAsset = async (id: string) => assets.find(asset => asset.id === id) ?? null;
 
+function updateBoardActions() {
+  if (!isBoard) return;
+  get<HTMLButtonElement>('board-save').disabled = !!active || saving;
+  get<HTMLButtonElement>('board-export').disabled = !!active || saving;
+}
+
 async function work(operation: (signal: AbortSignal) => Promise<void>) {
   active?.abort();
   const controller = new AbortController();
   const { signal } = controller;
   active = controller;
+  updateBoardActions();
   cancel.disabled = false;
   status.textContent = t('loading');
   try {
@@ -63,6 +71,7 @@ async function work(operation: (signal: AbortSignal) => Promise<void>) {
     if (active === controller) {
       active = undefined;
       cancel.disabled = true;
+      updateBoardActions();
     }
   }
 }
@@ -320,7 +329,8 @@ if (isBoard) {
   save.addEventListener('click', async () => {
     if (!repository) { status.textContent = collectionText(locale, 'storage'); return; }
     if (!input('board-preserve').checked) { status.textContent = t('needsPermission'); return; }
-    save.disabled = true;
+    saving = true;
+    updateBoardActions();
     try {
       const next = readBoard();
       const preview = await media.jobs.start(await boardTask(next, readAsset)).result;
@@ -333,6 +343,6 @@ if (isBoard) {
       showBoard(preview.blob);
       status.textContent = t('saved');
     } catch { status.textContent = t('bad'); }
-    finally { save.disabled = false; }
+    finally { saving = false; updateBoardActions(); }
   });
 }
