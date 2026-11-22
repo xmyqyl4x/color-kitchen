@@ -1,6 +1,6 @@
 import type { Palette } from '../model/color.js';
 import type { Gradient } from '../gradient/gradient.js';
-import type { BoardLayout } from '../preview/moodboard.js';
+import type { BoardImage, BoardLayout, MoodboardInput } from '../preview/moodboard.js';
 
 type DocumentBase = Readonly<{
   schemaVersion: 1;
@@ -21,6 +21,8 @@ export type BoardDocument = DocumentBase & Readonly<{
   assetIds: readonly string[];
   layout: BoardLayout;
   caption?: string;
+  composition?: Pick<MoodboardInput, 'width' | 'height' | 'padding' | 'spacing' | 'background' | 'legend'>;
+  placements?: Readonly<Record<string, Pick<BoardImage, 'crop' | 'focus'>>>;
 }>;
 
 export type CreativeDocument = PaletteDocument | GradientDocument | BoardDocument;

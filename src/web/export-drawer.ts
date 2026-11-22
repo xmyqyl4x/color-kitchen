@@ -1,4 +1,5 @@
 import type { CreativeDocument, StoredAsset } from '../browser/document.js';
+import { boardTask } from '../browser/board.js';
 import { createBrowserMedia } from '../browser/media.js';
 import { colorCss } from '../color/css.js';
 import { parseColor } from '../color/parse.js';
@@ -132,11 +133,12 @@ export function openExportDrawer(locale: Locale, creative: CreativeDocument, rea
         } else if (value === 'png') ({ blob, companion: text } = await media.export.gradientRaster(creative, bounds));
         else text = media.export.gradientText(creative);
       } else {
-        const images = await boardSources(creative, readAsset);
-        if (images.length !== creative.assetIds.length) throw new Error('Missing local assets.');
-        const task = { kind: 'moodboard', backing: opaque, input: { layout: creative.layout,
-          palette: creative.palette, caption: creative.caption, width: 960, height: 640, padding: 18, spacing: 10,
-          background: parseColor('#F7F8F4'), images: images.map(asset => ({ id: asset.id, source: asset.blob })) } } as const;
+        const task = await boardTask(creative, readAsset ?? (async () => null), opaque);
+        if (value === 'jpeg' && task.input.background.alpha < 1 && !opaque) {
+          inspected.textContent = t('backingRequired');
+          backingChoice.focus();
+          return;
+        }
         if (value === 'pdf') ({ blob, companion: text } = await media.export.boardPdf(task));
         else ({ blob } = await media.jobs.start({ ...task, format: value === 'jpeg' ? 'jpeg' : 'png' }).result);
         text ??= media.export.paletteText(creative.palette, 'css').text;

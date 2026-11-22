@@ -84,6 +84,7 @@ function render() {
     });
     const actions = node('div', undefined, 'studio-actions');
     if (item.kind === 'palette') actions.append(press(t('open'), () => openPalette(item)));
+    if (item.kind === 'board') actions.append(press(t('open'), () => { location.href = '/' + locale + '/moodboard#saved=' + item.id; }));
     actions.append(
       press(t('export'), () => openExportDrawer(locale, item, repository!.getAsset)),
       press(t('duplicate'), async () => {
