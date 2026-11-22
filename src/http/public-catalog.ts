@@ -16,6 +16,22 @@ export type CatalogHttpDependencies = Readonly<{
 const publicKinds: readonly string[] = catalogKinds.filter(kind => kind !== 'policy');
 const policies = ['licensing', 'terms', 'privacy', 'cookies'];
 
+export function catalogListOptions(query: { get(key: string): string | null | undefined }):
+  Pick<Parameters<typeof publicCatalogListing>[1], 'filters' | 'cursor' | 'limit' | 'sort'> {
+  const count = query.get('count') ?? undefined;
+  const limit = query.get('limit') ?? undefined;
+  const sort = query.get('sort') ?? undefined;
+  const lightness = query.get('lightness') ?? undefined;
+  if ((count !== undefined && !/^[1-9]\d?$/.test(count)) || (limit !== undefined && !/^[1-9]\d?$/.test(limit)) ||
+      (sort !== undefined && sort !== 'featured' && sort !== 'popular') ||
+      (lightness !== undefined && lightness !== 'light' && lightness !== 'medium' && lightness !== 'dark')) {
+    throw new RangeError('Invalid listing filters.');
+  }
+  const filters: CatalogFilters = { query: query.get('q') ?? undefined, family: query.get('family') ?? undefined,
+    mood: query.get('mood') ?? undefined, colorCount: count === undefined ? undefined : Number(count), lightness };
+  return { filters, cursor: query.get('cursor') ?? undefined, limit: limit === undefined ? undefined : Number(limit), sort };
+}
+
 export function catalogHttp(dependencies: CatalogHttpDependencies) {
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
@@ -56,20 +72,9 @@ export function catalogHttp(dependencies: CatalogHttpDependencies) {
         const page = await dependencies.withClient(client => publicCatalogDetail(client, kind, slug, locale));
         return page ? success(page) : error(404, 'not_found');
       }
-      const count = query.get('count');
-      const limit = query.get('limit');
-      const sort = query.get('sort');
-      const lightness = query.get('lightness');
-      if ((count !== undefined && !/^[1-9]\d?$/.test(count)) || (limit !== undefined && !/^[1-9]\d?$/.test(limit)) ||
-          (sort !== undefined && sort !== 'featured' && sort !== 'popular') ||
-          (lightness !== undefined && lightness !== 'light' && lightness !== 'medium' && lightness !== 'dark')) {
-        return error(400, 'invalid_query');
-      }
-      const filters: CatalogFilters = { query: query.get('q'), family: query.get('family'), mood: query.get('mood'),
-        colorCount: count === undefined ? undefined : Number(count), lightness };
+      const options = catalogListOptions(query);
       const data = await dependencies.withClient(client => publicCatalogListing(client, {
-        kind, locale, filters, cursor: query.get('cursor'), limit: limit === undefined ? undefined : Number(limit),
-        sort, now: dependencies.now?.() ?? new Date(), measurement: dependencies.measurement === true,
+        kind, locale, ...options, now: dependencies.now?.() ?? new Date(), measurement: dependencies.measurement === true,
       }));
       return success(data);
     } catch (cause) {

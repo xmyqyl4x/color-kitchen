@@ -72,9 +72,12 @@ export function renderShell(request: Request, options: Readonly<{
       '" href="' + html(new URL(pathFor(value, screen, slug), url).href) + '">'),
     '<link rel="alternate" hreflang="x-default" href="' + html(new URL(pathFor('en', screen, slug), url).href) + '">',
   ].join('') : '<meta name="robots" content="noindex">';
+  const languageParams = new URLSearchParams(url.search);
+  languageParams.delete('cursor');
+  const languageQuery = languageParams.size ? '?' + languageParams.toString() : '';
   const languages = locales.map(language => {
     const current = language === locale ? ' aria-current="true"' : '';
-    return '<a data-focus-key="language-' + language + '" href="' + pathFor(language, screen, slug) + html(url.search) +
+    return '<a data-focus-key="language-' + language + '" href="' + pathFor(language, screen, slug) + html(languageQuery) +
       '" hreflang="' + language + '" lang="' + language + '"' + current + '>' + languageNames[language] + '</a>';
   }).join('');
   const markup = `<!doctype html><html lang="${locale}"><head>

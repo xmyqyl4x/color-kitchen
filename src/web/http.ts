@@ -11,9 +11,10 @@ import { collectionScreen } from './collection.js';
 import { imageToolsScreen } from './image-tools.js';
 import { colorToolsScreen } from './color-tools.js';
 import { previewToolsScreen } from './preview-tools.js';
+import { discoveryKinds, discoveryPage } from './discovery.js';
 
 const knownScreens = new Set<string>(screenRoutes);
-const listings = { palettes: 'palette', colors: 'color', gradients: 'gradient', fonts: 'font' } as const;
+const listings = { fonts: 'font' } as const;
 const policySlugs = new Set(['licensing', 'terms', 'privacy', 'cookies']);
 const fileRoutes: Record<string, [string, string]> = {
   '/assets/kitchen.css': ['../../../src/web/kitchen.css', 'text/css; charset=utf-8'],
@@ -21,7 +22,7 @@ const fileRoutes: Record<string, [string, string]> = {
   '/assets/source-sans-license.txt': ['../../../catalog/fonts/SourceSans3-OFL.txt', 'text/plain; charset=utf-8'],
   '/vendor/pdf-lib.js': ['../../../node_modules/pdf-lib/dist/pdf-lib.esm.min.js', 'text/javascript; charset=utf-8'],
 };
-const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/messages|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text|ui|collection-client|collection-text|export-drawer|image-tools-client|image-tools-text|color-tools-client|color-tools-text|preview-tools-client|preview-tools-text))\.js$/;
+const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/messages|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text|ui|collection-client|collection-text|export-drawer|image-tools-client|image-tools-text|color-tools-client|color-tools-text|preview-tools-client|preview-tools-text|discovery-client|discovery-text))\.js$/;
 
 async function webFile(request: Request, path: string) {
   const asset = Object.hasOwn(fileRoutes, path) ? fileRoutes[path] : undefined;
@@ -41,6 +42,7 @@ function navigationLocale(request: Request) {
 }
 
 export function webHttp(dependencies: CatalogHttpDependencies) {
+  const discovery = discoveryPage(dependencies);
   async function catalogContent(locale: Locale, screen: Screen, kind: CatalogKind, slug?: string) {
     if (slug) {
       const found = await dependencies.withClient(client => publicCatalogDetail(client, kind, slug, locale));
@@ -102,6 +104,11 @@ export function webHttp(dependencies: CatalogHttpDependencies) {
     });
     const kind = Object.hasOwn(listings, screen) ? listings[screen as keyof typeof listings] : undefined;
     try {
+      if (Object.hasOwn(discoveryKinds, screen)) {
+        const result = await discovery(request, screen as keyof typeof discoveryKinds, locale, entry);
+        if (result instanceof Response) return result;
+        return result ? renderShell(request, { ...base, ...result, module: '/src/web/discovery-client.js' }) : missing();
+      }
       if (kind) {
         const content = await catalogContent(locale, namedScreen, kind, entry);
         return content ? renderShell(request, { ...base, ...content }) : missing();

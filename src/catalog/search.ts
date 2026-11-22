@@ -60,7 +60,8 @@ function hueFamily(color: ColorValue) {
 
 export function matchesCatalog(entry: Searchable, filters: NormalizedFilters, tags: CatalogTags = []) {
   if (filters.query && !filters.hex) {
-    const names = [entry.title, entry.slug, entry.payload.family, entry.payload.keyword, ...tags.map(tag => tag.slug)];
+    const aliases = Array.isArray(entry.payload.aliases) ? entry.payload.aliases : [];
+    const names = [entry.title, entry.slug, entry.payload.family, entry.payload.keyword, ...aliases, ...tags.map(tag => tag.slug)];
     if (!names.some(name => typeof name === 'string' && fold(name, entry.locale).includes(filters.query))) return false;
   }
   if (filters.mood && !tags.some(tag => tag.facet === 'mood' && tag.slug === filters.mood)) return false;
