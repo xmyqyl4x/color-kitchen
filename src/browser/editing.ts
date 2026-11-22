@@ -61,7 +61,8 @@ export function createPaletteEditing(...options: Parameters<typeof localWorkspac
     const session = workspace.current();
     return { document: structuredClone(session.document),
       version: { documentId: session.document.id, revision: session.document.revision } as Version,
-      canUndo: session.undo.length > 0, canRedo: session.redo.length > 0, dirty: workspace.dirty() };
+      canUndo: session.undo.length > 0, canRedo: session.redo.length > 0, dirty: workspace.dirty(),
+      saved: workspace.savedVersion() };
   }
   function change(command: PaletteCommand, expected: Version) {
     requireVersion(current(), expected);
@@ -88,6 +89,13 @@ export function createPaletteEditing(...options: Parameters<typeof localWorkspac
       return run(() => change(command, expected));
     },
     propose,
+    rename(name: string, expected: Version) {
+      return run(() => {
+        requireVersion(current(), expected);
+        workspace.rename(name, expected.revision);
+        return snapshot();
+      });
+    },
     apply(suggestion: Proposal) {
       const pending = proposed.get(suggestion);
       if (!pending) throw new EditingError('invalid');

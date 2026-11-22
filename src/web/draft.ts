@@ -2,17 +2,28 @@ import type { PaletteDocument } from '../browser/document.js';
 import { previewWorkspaceImport } from '../workspace/workspace.js';
 
 const storageKey = 'ck-active-palette';
+type Saved = Readonly<{ storedRevision: number; editRevision: number }>;
 
-export function readActivePalette() {
+export function readActiveDraft() {
   try {
-    const value = sessionStorage.getItem(storageKey);
-    return value ? previewWorkspaceImport(value) : null;
+    const text = sessionStorage.getItem(storageKey);
+    if (!text) return null;
+    const value = JSON.parse(text);
+    if (!value.document) return { document: previewWorkspaceImport(text), saved: undefined };
+    const document = previewWorkspaceImport(JSON.stringify(value.document));
+    const saved: Saved | undefined = value.saved;
+    return { document, saved: saved && Number.isSafeInteger(saved.storedRevision) && saved.storedRevision > 0 &&
+      Number.isSafeInteger(saved.editRevision) && saved.editRevision > 0 && saved.editRevision <= document.revision ? saved : undefined };
   } catch { return null; }
 }
 
-export function storeActivePalette(document: PaletteDocument) {
+export function readActivePalette() {
+  return readActiveDraft()?.document ?? null;
+}
+
+export function storeActivePalette(document: PaletteDocument, saved?: Saved) {
   try {
-    sessionStorage.setItem(storageKey, JSON.stringify(document));
+    sessionStorage.setItem(storageKey, JSON.stringify(saved ? { document, saved } : document));
     return true;
   } catch { return false; }
 }
