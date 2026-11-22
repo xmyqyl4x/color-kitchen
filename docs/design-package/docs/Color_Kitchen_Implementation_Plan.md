@@ -1,6 +1,6 @@
 # Delivery architecture
 
-Ship one containerized web application in two live releases. Put color mathematics and editing rules in a deterministic TypeScript package, application workflows in use cases, and storage behind narrow interfaces. The same use case can serve several clients. PostgreSQL is the system of record for hosted data in both releases. Use the existing database and identity boundaries after the read-only review in the companion database design. Browser-local creative documents have their own persistence boundary.
+Deliver one containerized web application across three phases. Put color mathematics and editing rules in a deterministic TypeScript package, application workflows in use cases, and storage behind narrow interfaces. The same use case can serve several clients. PostgreSQL is the system of record for hosted data across the phases. Use the existing database and identity boundaries after the read-only review in the companion database design. Browser-local creative documents have their own persistence boundary.
 
 The repository contains the design package and a browser prototype. The technology choices are proposed defaults pending verification of the migration system, shared identity, data owners and deployment environment. The initial repository snapshot provides the evidence baseline. [Reviewed repository snapshot](https://github.com/xmyqyl4x/color-kitchen/tree/e30ea886dfc07fa05067c551ffeabe5b863d9140)
 
@@ -12,7 +12,7 @@ The repository contains the design package and a browser prototype. The technolo
 | Data access | Typed records, domain mapping, query projections, repositories, version heads and scoped transactions. Adapter for platform subjects and approved game summaries. | Accept a use-case transaction or scope and return typed results. Tests use a disposable PostgreSQL matching the verified production major. Browser storage adapters use browser fixtures. |
 | Domain | Color parsing, harmony, locks, alpha, gamut and contrast, gradients, theme role bindings, publication rules, project invariants. | Pure functions or small typed objects. Inject clocks and seeds when a result depends on them. Tests cover numeric limits, invalid state and repeatability without servers. |
 | Application services | GeneratePalette, ApplyContrastFix, ExtractImagePalette, SaveLocalDocument, FindPublishedItems, SubmitInquiry, AskColorGuide, SaveThemeRevision, ReleaseTheme, PublishCatalogRevision. | Services own a complete command or query, authorization decision, transaction boundary and error result. They depend on data and provider interfaces. |
-| APIs | Public HTTP reads and submissions, authenticated platform APIs, typed browser-local interfaces, Phase 2 read-only connector tools and extension handoff. | Parse at the edge. Pass a principal, locale and typed input into one use case. Return a stable error code and a data projection. Verify browser, HTTP and connector contracts before accepting the dependent UI. |
+| APIs | Public HTTP reads and submissions, authenticated platform APIs, typed browser-local interfaces, Phase 3 read-only connector transport and extension handoff. | Parse at the edge. Pass a principal, locale and typed input into one use case. Return a stable error code and a data projection. Verify browser, HTTP and connector contracts before accepting the dependent UI. |
 | Presentation | Localized public pages, admin forms, developer portal, mobile views, extension popup and AI client output. | Views own interaction, focus and rendering. They submit commands through the applicable interface. A UI test exercises real supported entry points. |
 | Infrastructure | Identity provider, scoped OAuth grants, database pool, local storage, web workers, approved fonts, model provider, consent provider, advertising, contact notification, scheduler and deployment. | Wire concrete adapters in one composition root. Bound time, retries, payload size and sensitive fields. Test provider outages and recovery. |
 
@@ -43,7 +43,7 @@ Use 400 for syntactically invalid input, 422 for semantic validation failure, 40
 
 Data access distinguishes ordinary Color Kitchen users from the existing game's player record. Use the existing provider or approved read models for identity, puzzle metadata, localized word resources, session presentation state, published results and leaderboard summaries. The developer preview consumes minimal authorized projections. The PostgreSQL design specifies candidate keys and the evidence to verify. Protect unreleased answers, player identity, private sessions and raw ranking data from portal users and AI clients. Membership in a Color Kitchen project grants access to its theme only.
 
-Build contract tests with allowed, denied, missing and stale fixtures for all six families. Before enabling a real game, identify the owning service, stable tenant/game keys, data classification and permissions, and test cross-project isolation with two test tenants. Label the preview source. Full Phase 2 acceptance requires owner-approved live bindings for all six families in one agreed existing game, plus an observed player journey using the released theme in that game’s own client. Until those checks pass, report the specific missing binding and leave full phase acceptance open. A labeled sample preview can be deployed independently.
+Build contract tests with allowed, denied, missing and stale fixtures for all six families. Before enabling a real game, identify the owning service, stable tenant/game keys, data classification and permissions, and test cross-project isolation with two test tenants. Label the preview source. Live game integration in Phase 3 requires owner-approved bindings for all six families in one agreed existing game, plus an observed player journey using the released theme in that game’s own client. Until those checks pass, report the specific missing binding and leave live game acceptance open. A labeled sample preview can be deployed independently.
 
 # Coding and technology standards
 
@@ -118,29 +118,40 @@ The production deployable is a stateless OCI web image. Build in separate depend
 
 Phase 1 prerequisites are permission to inspect the existing database, catalog and font rights, the five translated content sets, a working hosted model/contact path, production domain/TLS and an approved advertising/consent configuration. Attach a real production journey, locale crawl, privacy trace, artifact exports, classification of any defects, image digest, schema version and rollback result. Mark complete only once the entire specified public website is usable.
 
-Full Phase 2 acceptance additionally requires project/account mapping with the platform identity owner, staff permissions, confirmed release visibility rules, OAuth client registration and scope, an authorized test tenant, extension publisher access and a supported device/browser matrix. Attach owner/editor/viewer journeys, staff publication and rollback, current-member and revoked-connector results, mobile-device evidence and a successful extension installation from the agreed distribution channel. Confirm Phase 1 regression checks on the shared production release. Attach approved live evidence for each of the six source contracts and the player journey in the agreed game client. Keep full Phase 2 acceptance open for every outstanding binding or missing journey.
+Phase 2 evidence covers the project/account mapping with the platform identity owner, authorization in the project and staff APIs, release visibility rules, and staff publication and rollback. Confirm Phase 1 regressions on the shared production release.
+
+Phase 3 evidence covers owner/editor/viewer journeys in the developer portal, OAuth client registration and scope, current-member and revoked-connector results, the supported mobile device and browser matrix, and an approved Chrome installation. Attach approved live evidence for each of the six game-data contracts and the player journey in the agreed game client. P2-25 through P2-27 record the release evidence across both phases. Track incomplete evidence by component.
 
 # Pull request register
 
-The register groups 68 work items by layer and phase. Its IDs support traceability. A work item can share a PR with a related item when their prerequisites, acceptance checks and rollback impact are reviewable together. The release items record production evidence.
+The register groups 68 planned PRs by layer and phase. The counts track the work items as one PR each. Live acceptance follows the release gates and their evidence.
 
-| Review gate | Phase 1 | Phase 2 |
-| --- | --- | --- |
-| Database and storage | P1-01 to P1-04 | P2-01 to P2-04 |
-| Data access | P1-05 to P1-08 | P2-05 to P2-08 |
-| Domain rules | P1-09 to P1-16 | P2-09 to P2-12 |
-| Application services | P1-17 to P1-23 | P2-13 to P2-16 |
-| APIs and client contracts | P1-24 to P1-28 | P2-17 to P2-20 |
-| Presentation | P1-29 to P1-39 | P2-21 to P2-24 |
-| Verify and release | P1-40 to P1-41 | P2-25 to P2-27 |
+| Phase | Planned PRs | Merged | Remaining |
+| --- | ---: | ---: | ---: |
+| Phase 1 · Public website | 41 | 41 | 0 |
+| Phase 2 · Project and catalog services and administration | 20 | 12 | 8 |
+| Phase 3 · Developer portal, mobile workflows, AI connector and Chrome | 7 | 0 | 7 |
+| **Total across three phases** | **68** | **53** | **15** |
+
+Two phases have PRs remaining. The merged counts reflect `main` at `1b57429`, through P1-41 and P2-12. Phase 2 has five implementation PRs and three shared release PRs remaining. The shared release PRs follow the relevant Phase 3 prerequisites.
+
+| Review gate | Phase 1 | Phase 2 | Phase 3 |
+| --- | --- | --- | --- |
+| Database and storage | P1-01 to P1-04 | P2-01 to P2-04 | — |
+| Data access | P1-05 to P1-08 | P2-05 to P2-08 | — |
+| Domain rules | P1-09 to P1-16 | P2-09 to P2-12 | — |
+| Application services | P1-17 to P1-23 | P2-13, P2-14 | P3-01, P3-02 |
+| APIs and client contracts | P1-24 to P1-28 | P2-17, P2-18 | P3-03, P3-04 |
+| Presentation | P1-29 to P1-39 | P2-22 | P3-05 to P3-07 |
+| Verify and release | P1-40, P1-41 | P2-25 to P2-27, shared with Phase 3 | Uses P2-25 to P2-27 |
 
 ## How to schedule and review these PRs
 
-The backlog contains 68 work items: 41 in Phase 1 and 27 in Phase 2. Each heading names its requirements, direct prerequisites, bounded tasks, first failing test and definition of done. Schedule by the listed prerequisites. A gate groups work by layer and does not create additional dependencies. A dependent work item can start against an agreed interface and fixture and must verify the real dependency before its integration is accepted. For the first vertical slice, exercise generate, lock, contrast and CSS export through the local workspace before tying it to hosted services. Deploy Phase 2 web/connector and store distribution on their own verified prerequisites.
+Each heading names its requirements, direct prerequisites, bounded tasks, first failing test and definition of done. Schedule by the listed prerequisites, including dependencies across phases. A gate groups work by layer and does not create additional dependencies. A dependent work item can start against an agreed interface and fixture and must verify the real dependency before its integration is accepted. For the first vertical slice, exercise generate, lock, contrast and CSS export through the local workspace before tying it to hosted services. Use the component prerequisites in the shared release PRs to schedule the web rollout and Chrome distribution.
 
 Start each behavior change by recording a failing test against the desired result, implement the smallest change that makes it pass, then refactor. For a migration, capture the failing constraint, upgrade or restore check against an isolated database first. For an operational PR, exercise the failure in staging and retain its evidence. A merged PR includes its fixtures, trace IDs and relevant schema or interface documentation. A frontend PR can assemble existing services through the approved API and must not create SQL, duplicate business rules or quietly add another endpoint. A layer defect returns to its owning layer for a focused prerequisite fix.
 
-Screen numbers refer to the original 20-screen mockup set. Screens 01–16 and 18–20 guide Phase 1. Screen 17 guides the Phase 2 Chrome extension. Screen 19 is evidence for the accessible responsive baseline in Phase 1. Phase 2 adds dedicated mobile improvements on top of it. The functional design is authoritative for tool behavior. Paths and implementation groupings in this backlog are proposed boundaries.
+Screen numbers refer to the original 20-screen mockup set. Screens 01–16 and 18–20 guide Phase 1. Screen 17 guides the Chrome extension in Phase 3. Screen 19 provides the accessible responsive baseline for the mobile improvements in Phase 3. The functional design is authoritative for tool behavior. Paths and implementation groupings in this backlog are proposed boundaries.
 
 ## Phase 1 public website
 
@@ -300,7 +311,7 @@ Depends on — P1-18. First failing check — A second locale receives a cached 
 
 #### P1-25 · Expose the anonymous Color Guide HTTP contract
 
-Scope and work — PUB-08, X-LANG, X-PRIV. Add a browser-callable POST for prompt, explicit color context, bounded history and locale. Return validated suggestions with a request ID, typed errors, and retry information. Protect provider credentials on the server. The Phase 2 external connector has a different purpose, audience and access contract.
+Scope and work — PUB-08, X-LANG, X-PRIV. Add a browser-callable POST for prompt, explicit color context, bounded history and locale. Return validated suggestions with a request ID, typed errors, and retry information. Protect provider credentials on the server. The Phase 3 external connector has its own purpose, audience and access contract.
 
 Depends on — P1-20. First failing check — A client can send an oversized context, receive successful malformed suggestions or learn private provider configuration. Done when — Real HTTP tests exercise success, validation, throttling and upstream timeout using a deterministic test provider, with anonymous access in every locale.
 
@@ -415,9 +426,22 @@ Depends on — P1-40. First failing check — A staging exercise pauses promotio
 
 Record the reviewer, date, environment, result and supporting test run for each row. A failed public workflow keeps Phase 1 open.
 
-## Phase 2 portals, mobile, connector and Chrome
+## Phase 2 project and catalog services and administration
 
 Use the Phase 1 public contracts as the compatibility baseline. Project membership controls access to private developer work. Staff permissions protect the operations that change the public catalog. These permissions apply to ownership and publication and introduce no charge for using a feature. Reuse the platform's verified identity, tenancy and canonical records where available. Before introducing or binding a schema, record the deployed platform schema version, owner, fields, supported interface and relevant permission. A privileged portal action uses an authorization decision even when its navigation control is hidden. The repository snapshot at commit `e30ea886dfc07fa05067c551ffeabe5b863d9140` contains only a README, so the example table names are proposals. Unknown upstream interfaces stay explicitly unbound.
+
+### Remaining Phase 2 PRs
+
+| PR | Work | Direct prerequisites |
+| --- | --- | --- |
+| P2-13 | Developer theme workflows and reference-game previews | P2-05, P2-08, P2-09 |
+| P2-14 | Catalog moderation, publication and rollback | P2-06, P2-10 |
+| P2-17 | Authorized project and game-theme HTTP APIs | P2-13 |
+| P2-18 | Staff administration HTTP APIs | P2-14 |
+| P2-22 | Site administration portal | P2-18 |
+| P2-25 | Shared staging rehearsal | P2-22, P3-05, P3-06, P3-07 |
+| P2-26 | Shared web rollout | P1-41, P2-25 |
+| P2-27 | Chrome Web Store distribution | P1-41, P3-07, extension rehearsal in P2-25 |
 
 ### Gate 1. Database extensions and storage boundaries
 
@@ -511,19 +535,7 @@ Scope and work — ADM-01, X-LANG, X-OPS. Coordinate draft editing, translation 
 
 Depends on — P2-06, P2-10. First failing check — A publication retry double-records the release or serves a mixed group of old/new translations. Done when — Concurrent and failed jobs preserve one consistent release across all five locales and provide a retryable incident record.
 
-#### P2-15 · Orchestrate the read-only external AI connector
-
-Scope and work — AI-01, X-PRIV, X-OPS. Combine anonymous public catalog reads with authenticated `project:read` calls for current project releases. Check revocation, current membership, grant scope and selected project on each authenticated call. Check the exact resource, current release, audience and withdrawal state for both access modes. Revoked, withdrawn or superseded records never escape through a cache. Limit response sizes, respect locale selection and record minimal audit/operational outcomes. Return explicit denied/unavailable results without exposing the existence of other projects' assets.
-
-Depends on — P2-07, P2-11. First failing check — A cached authorized result is replayed after revocation or an unavailable backend produces fabricated theme data. Done when — Service tests prove denial, bounded pagination and consistent upstream failure. Only authorized, immutable released asset data is exposed.
-
-#### P2-16 · Orchestrate browser capture and mobile recovery
-
-Scope and work — EXT-01, MOB-01, X-PRIV, X-ACC. Gate Chrome extraction on an actual invocation; limit computed-style scanning, support user-selected sample/copy, and handle restrictive pages and canceled picks. Reuse existing workspace services for mobile return-from-picker, interrupted file jobs and local-state restoration. Add new orchestration only where a Phase 1 service cannot already fulfill the path.
-
-Depends on — P2-12, P1-17, P1-19. First failing check — A popup initiates a capture in the background or an interrupted mobile picker replaces the user's last palette. Done when — Tests cover cancellation, denial and interruption independently of toolbar or mobile components and no automatic page capture occurs.
-
-### Gate 5. Authenticated HTTP, connector protocol and browser interfaces
+### Gate 5. Authenticated HTTP APIs
 
 #### P2-17 · Expose authorized project and game-theme HTTP APIs
 
@@ -537,25 +549,7 @@ Scope and work — ADM-01, X-LANG, X-PRIV. Implement staff-only content/revision
 
 Depends on — P2-14. First failing check — A project owner without staff authorization publishes a catalog edit or a stale reviewer approves a newer unseen revision. Done when — Real HTTP tests exercise denied and approved role combinations, race handling, transaction rollback and all-locale publication.
 
-#### P2-19 · Expose and contract-test the external connector transport
-
-Scope and work — AI-01, X-OPS, X-PRIV. Publish a versioned tool/resource contract and the adapter required by the selected external AI host. Support the host authorization discovery/flow for required `project:read` and selected projects alongside anonymous public-catalog access. Bound and validate output; enforce no draft/history access, writes or arbitrary queries. Document how a user grants and revokes permitted theme access.
-
-Depends on — P2-15. First failing check — A real protocol client requests an undeclared write or asks for a theme outside its grant; neither request may succeed or disclose private metadata. Done when — Transport tests at the actual network boundary and one supported host's development environment pass, including expired token, revocation, unsupported tool and version handling.
-
-#### P2-20 · Expose minimal Chrome and mobile browser interfaces
-
-Scope and work — EXT-01, MOB-01, X-ACC. Define typed messages between popup, worker and user-invoked capture handler; validate sender, tab, payload and explicit web destination. Declare minimum MV3 permissions and bundle code. Publish any necessary mobile recovery facade over existing local APIs. Keep extension and site storage separate.
-
-Depends on — P2-16. First failing check — An unsolicited sender triggers capture, or an unrecognized message opens another origin. Done when — Chrome integration tests verify a real extension lifecycle, approved invocation, denied/restricted tabs and explicit browser-to-site handoff under a minimal permission manifest.
-
-### Gate 6. Portals, enhanced mobile and distribution interfaces
-
-#### P2-21 · Build the game developer portal
-
-Scope and work — DEV-01, X-LANG, X-ACC. Create project selection, theme asset list, editable role mapping, labeled reference-game preview, committed revision comparison/history and export. Only owners receive release/withdraw controls; show project as default audience and require confirmation to make a release public. Show stale-edit recovery and archived releases honestly. Keep ordinary public tools available without portal sign-in and localize all portal text in the five supported languages.
-
-Depends on — P2-17. First failing check — A viewer sees a working publish action or unresolved provider data appears as live gameplay. Done when — An editor can author a theme, an owner can release/withdraw it, and a viewer can preview/export the allowed committed revision using keyboard and touch. Unauthorized project data never appears in DOM or network responses.
+### Gate 6. Site administration portal
 
 #### P2-22 · Build the site administration portal
 
@@ -563,48 +557,98 @@ Scope and work — ADM-01, X-LANG, X-ACC. Build catalog/revision lists, a multil
 
 Depends on — P2-18. First failing check — An incomplete Portuguese revision can be published from the UI, or a pending edit erases another editor's newer text. Done when — A staff author and authorized reviewer complete draft-to-publication and rollback across five locales; their visible history matches the immutable audit record.
 
-#### P2-23 · Optimize essential mobile workflows
+### Gate 7. Shared verification and deployment for Phases 2 and 3
 
-Scope and work — MOB-01, X-ACC, X-LANG, X-OPS. Improve manipulation of palette cards, image picking/crop, control sheets, reachability, keyboard-safe layouts and task recovery on small screens. Optimize decode/worker scheduling and memory for lower-end devices. Preserve Phase 1 direct URLs, screen-reader order, desktop workflows, content and ad placement safeguards.
-
-Depends on — P2-20, P1-29 through P1-39. First failing check — A software keyboard hides Apply, a held swatch traps focus or mobile memory pressure loses the active palette. Done when — A specified real iOS/Safari and Android/Chrome matrix and the 320/390/768px regression suite complete extraction → palette → check → export with correct focus, reflow and measured performance against the recorded Phase 1 baseline.
-
-#### P2-24 · Build Chrome UI and user-facing connector setup
-
-Scope and work — EXT-01, AI-01, X-LANG, X-ACC, X-PRIV. Build the browser companion landing and popup (screen 17), explain permissions, enable keyboard capture/copy/select and explicit handoff. Provide external connector setup/help covering anonymous public catalog, selected-project `project:read` grant/revoke and example retrieval of a current project-only release. State that viewers use portal history for historical revisions. Wire UI only to the completed protocols; keep installation/listing links tied to verified distribution.
-
-Depends on — P2-19, P2-20. First failing check — A restricted tab offers a misleading successful extraction or an external client appears able to read a draft. Done when — A review build completes both guided setup journeys, reports denied/revoked permissions correctly, and contains no extension advertisements or misleading store claims.
-
-### Gate 7. Verification and deployment
-
-#### P2-25 · Rehearse the combined Phase 2 deployment
+#### P2-25 · Rehearse the combined Phase 2 and Phase 3 deployment
 
 Scope and work — DEV-01, ADM-01, MOB-01, AI-01, EXT-01, X-TDD, X-OPS. Upgrade a representative Phase 1 database and restore a copy. Exercise public compatibility, portal authorization, external host grants, Chrome package review, localized publication/rollback, mobile performance and scope/privacy denials. Record verification evidence from the provider owner for all six live bindings in one agreed existing game. Run a player journey in its own client using a released theme. Label fixture-only checks separately and report each missing live item.
 
-Depends on — P2-21 through P2-24. First failing check — A cross-project leak, loss of public locale data, unavailable mandatory upstream contract or failing extension package blocks the affected release. Done when — The release evidence covers public regression, build/content rollback, connector disable/revocation, extension distribution recovery and the six-adapter binding matrix. Verify anonymous public-only, authenticated `project:read` project-only access, publisher confirmation, membership removal, superseded revision and post-withdrawal denial. Record a named dependency and separate component status for any of the six live bindings or the player journey still unverified. Full Phase 2 acceptance stays open.
+Depends on — P2-22, P3-05, P3-06, P3-07. First failing check — A cross-project leak, loss of public locale data, unavailable mandatory upstream contract or failing extension package blocks the affected release. Done when — The release evidence covers public regression, build/content rollback, connector disable/revocation, extension distribution recovery and the six-adapter binding matrix. Verify anonymous public-only, authenticated `project:read` project-only access, publisher confirmation, membership removal, superseded revision and post-withdrawal denial. Record a named dependency and separate component status for any of the six live bindings or the player journey still unverified. Full Phase 3 acceptance stays open while this evidence is pending.
 
-#### P2-26 · Promote Phase 2 web services, portals, mobile and connector
+#### P2-26 · Promote the web services, portals, mobile workflows and connector
 
 Scope and work — DEV-01, ADM-01, MOB-01, AI-01, X-OPS. Apply additive migrations; promote compatible services and clients in dependency order. Enable portal/connector access for an authorized canary, run tenant-isolation and public-website smoke tests, then widen rollout. Bind only named verified providers and keep fixture previews visibly labeled wherever live data is unavailable.
 
-Depends on — P1-41, P2-25. First failing check — A staging rollout rehearsal must disable connector access or revert portal/content versions while the prior public release remains usable. Done when — Production checks pass in all locales, the external host reads only an authorized released theme, revocation works, and the owner-approved real-game checks cover all six source families and a player journey consuming the released theme. If a binding is unavailable, any verified portal or connector rollout has component-only status and full Phase 2 remains open.
+Depends on — P1-41, P2-25. First failing check — A staging rollout rehearsal must disable connector access or revert portal/content versions while the prior public release remains usable. Done when — Production checks pass in all locales, the external host reads only an authorized released theme, revocation works, and the owner-approved real-game checks cover all six source families and a player journey consuming the released theme. Record the administration and Phase 3 deployment results by component. An unavailable binding leaves full Phase 3 acceptance open.
 
 #### P2-27 · Publish and verify Chrome distribution
 
 Scope and work — EXT-01, X-PRIV, X-OPS. Submit the reviewed extension through the approved store account, retain the reviewed build fingerprint and handle the store's review outcome. After approval, link the verified listing, install from the store and smoke-test capture, denial and website handoff. Document the recovery path for a bad version, including delisting or an expedited corrective version as available.
 
-Depends on — P1-41, P2-24 and the extension rehearsal in P2-25. First failing check — A missing/unapproved or mismatched listing never activates the public install link. Done when — The actual approved listing installs the expected build, smoke tests pass, and the phase owner records browser distribution as live. Record full Phase 2 completion only after the verified distribution, all six approved real-game bindings, the player journey and the web/connector criteria from P2-26 pass. While store approval or game access is pending, report verified components separately.
+Depends on — P1-41, P3-07 and the extension rehearsal in P2-25. First failing check — A missing/unapproved or mismatched listing never activates the public install link. Done when — The actual approved listing installs the expected build, smoke tests pass, and the phase owner records browser distribution as live. Full Phase 3 acceptance also requires all six approved real-game bindings, the player journey and the relevant web/connector criteria from P2-26. While store approval or game access is pending, report verified components separately.
 
-### Phase 2 release evidence
+### Shared release evidence
 
-| Accountable reviewer | Evidence attached to the production release record |
-| --- | --- |
-| Game integration owner | All six approved data contracts pass isolation and failure tests. A test player opens the agreed game, completes a themed session and sees its result and ranking. |
-| Project and staff owners | Owner, editor and viewer exercise their distinct permissions. A five-language change publishes and rolls back. Withdrawal hides the old public release. |
-| Mobile and integrations | A member releases and exports on a tested phone. The external client reads the current selected-project release and loses access after revocation. |
-| Distribution and operations | Install the approved extension from its production listing, verify a capture and a permission denial, run Phase 1 regression tests and rehearse recovery. |
+| Phase | Accountable reviewer | Evidence attached to the production release record |
+| --- | --- | --- |
+| Phase 2 | Project services and staff owners | The APIs enforce owner, editor and viewer permissions. A five-language staff change publishes and rolls back. Withdrawal hides the old public release. |
+| Phase 3 | Game integration and developer portal owners | The portal exercises the three roles. All six approved data contracts pass isolation and failure tests. A test player completes a themed session and sees its result and ranking. |
+| Phase 3 | Mobile and connector owners | A member releases and exports on a tested phone. The external client reads the current selected-project release and loses access after revocation. |
+| Phases 2 and 3 | Distribution and operations | Run Phase 1 regressions and rehearse recovery. Verify the approved extension installation, capture, and permission denial. |
 
-List each production entry point and its release evidence. A partial rollout can remain useful while open criteria are tracked. Full Phase 2 sign-off requires all four rows.
+List each production entry point and its release evidence. Record component rollout status while other criteria are open. Full sign-off across both phases requires all applicable evidence.
+
+## Phase 3 developer portal, mobile workflows, AI connector and Chrome
+
+Phase 3 has seven implementation PRs. It builds on the scoped theme and connector foundations and the Phase 2 project and theme HTTP APIs. The shared release PRs P2-25 through P2-27 record the applicable staging, rollout and distribution evidence.
+
+| Previous plan ID | Phase 3 PR | Work |
+| --- | --- | --- |
+| P2-15 | P3-01 | Read-only AI connector service |
+| P2-16 | P3-02 | Browser capture and mobile recovery |
+| P2-19 | P3-03 | External AI connector protocol and host integration |
+| P2-20 | P3-04 | Chrome extension messaging and mobile recovery interfaces |
+| P2-21 | P3-05 | Game Developer Portal |
+| P2-23 | P3-06 | Mobile workflow and performance improvements |
+| P2-24 | P3-07 | Chrome popup and user-facing connector setup |
+
+### Application services
+
+#### P3-01 · Orchestrate the read-only external AI connector
+
+Scope and work — AI-01, X-PRIV, X-OPS. Combine anonymous public catalog reads with authenticated `project:read` calls for current project releases. Check revocation, current membership, grant scope and selected project on each authenticated call. Check the exact resource, current release, audience and withdrawal state for both access modes. Revoked, withdrawn or superseded records never escape through a cache. Limit response sizes, respect locale selection and record minimal audit/operational outcomes. Return explicit denied/unavailable results without exposing the existence of other projects' assets.
+
+Depends on — P2-07, P2-11. First failing check — A cached authorized result is replayed after revocation or an unavailable backend produces fabricated theme data. Done when — Service tests prove denial, bounded pagination and consistent upstream failure. Only authorized, immutable released asset data is exposed.
+
+#### P3-02 · Orchestrate browser capture and mobile recovery
+
+Scope and work — EXT-01, MOB-01, X-PRIV, X-ACC. Gate Chrome extraction on an actual invocation; limit computed-style scanning, support user-selected sample/copy, and handle restrictive pages and canceled picks. Reuse existing workspace services for mobile return-from-picker, interrupted file jobs and local-state restoration. Add new orchestration only where a Phase 1 service cannot already fulfill the path.
+
+Depends on — P2-12, P1-17, P1-19. First failing check — A popup initiates a capture in the background or an interrupted mobile picker replaces the user's last palette. Done when — Tests cover cancellation, denial and interruption independently of toolbar or mobile components and no automatic page capture occurs.
+
+### Connector and browser interfaces
+
+#### P3-03 · Expose and contract-test the external connector transport
+
+Scope and work — AI-01, X-OPS, X-PRIV. Publish a versioned tool/resource contract and the adapter required by the selected external AI host. Support the host authorization discovery/flow for required `project:read` and selected projects alongside anonymous public-catalog access. Bound and validate output; enforce no draft/history access, writes or arbitrary queries. Document how a user grants and revokes permitted theme access.
+
+Depends on — P3-01. First failing check — A real protocol client requests an undeclared write or asks for a theme outside its grant; neither request may succeed or disclose private metadata. Done when — Transport tests at the actual network boundary and one supported host's development environment pass, including expired token, revocation, unsupported tool and version handling.
+
+#### P3-04 · Expose minimal Chrome and mobile browser interfaces
+
+Scope and work — EXT-01, MOB-01, X-ACC. Define typed messages between popup, worker and user-invoked capture handler; validate sender, tab, payload and explicit web destination. Declare minimum MV3 permissions and bundle code. Publish any necessary mobile recovery facade over existing local APIs. Keep extension and site storage separate.
+
+Depends on — P3-02. First failing check — An unsolicited sender triggers capture, or an unrecognized message opens another origin. Done when — Chrome integration tests verify a real extension lifecycle, approved invocation, denied/restricted tabs and explicit browser-to-site handoff under a minimal permission manifest.
+
+### Developer portal, mobile workflows and integration setup
+
+#### P3-05 · Build the game developer portal
+
+Scope and work — DEV-01, X-LANG, X-ACC. Create project selection, theme asset list, editable role mapping, labeled reference-game preview, committed revision comparison/history and export. Only owners receive release/withdraw controls; show project as default audience and require confirmation to make a release public. Show stale-edit recovery and archived releases honestly. Keep ordinary public tools available without portal sign-in and localize all portal text in the five supported languages.
+
+Depends on — P2-17. First failing check — A viewer sees a working publish action or unresolved provider data appears as live gameplay. Done when — An editor can author a theme, an owner can release/withdraw it, and a viewer can preview/export the allowed committed revision using keyboard and touch. Unauthorized project data never appears in DOM or network responses.
+
+#### P3-06 · Optimize essential mobile workflows
+
+Scope and work — MOB-01, X-ACC, X-LANG, X-OPS. Improve manipulation of palette cards, image picking/crop, control sheets, reachability, keyboard-safe layouts and task recovery on small screens. Optimize decode/worker scheduling and memory for lower-end devices. Preserve Phase 1 direct URLs, screen-reader order, desktop workflows, content and ad placement safeguards.
+
+Depends on — P3-04, P1-29 through P1-39. First failing check — A software keyboard hides Apply, a held swatch traps focus or mobile memory pressure loses the active palette. Done when — A specified real iOS/Safari and Android/Chrome matrix and the 320/390/768px regression suite complete extraction → palette → check → export with correct focus, reflow and measured performance against the recorded Phase 1 baseline.
+
+#### P3-07 · Build Chrome UI and user-facing connector setup
+
+Scope and work — EXT-01, AI-01, X-LANG, X-ACC, X-PRIV. Build the browser companion landing and popup (screen 17), explain permissions, enable keyboard capture/copy/select and explicit handoff. Provide external connector setup/help covering anonymous public catalog, selected-project `project:read` grant/revoke and example retrieval of a current project-only release. State that viewers use portal history for historical revisions. Wire UI only to the completed protocols; keep installation/listing links tied to verified distribution.
+
+Depends on — P3-03, P3-04. First failing check — A restricted tab offers a misleading successful extraction or an external client appears able to read a draft. Done when — A review build completes both guided setup journeys, reports denied/revoked permissions correctly, and contains no extension advertisements or misleading store claims.
 
 ## Requirement and screen index
 
@@ -629,14 +673,14 @@ The IDs below join the design specification, database and API work, local tool c
 | PUB-15 Type Playground | 16 | P1-15, P1-23, P1-28, P1-37 |
 | PUB-16 Collection, share and exports | 18 and shared drawers | P1-04, P1-08, P1-17, P1-22, P1-23, P1-27, P1-28, P1-31 |
 | PUB-17 Company pages, cookie choices and advertising | 01, 20 and seven footer destinations | P1-02, P1-03, P1-06, P1-07, P1-21, P1-24, P1-26, P1-29, P1-39 |
-| DEV-01 Game developer portal | P2-A and P2-C. Project, theme, revision and game preview | P2-01, P2-02, P2-05, P2-08, P2-09, P2-13, P2-17, P2-21 |
+| DEV-01 Game developer portal | P2-A and P2-C. Project, theme, revision and game preview | P2-01, P2-02, P2-05, P2-08, P2-09, P2-13, P2-17, P3-05 |
 | ADM-01 Administration | P2-B. Translation review, publication and audit | P2-03, P2-06, P2-10, P2-14, P2-18, P2-22 |
-| MOB-01 Enhanced mobile | P2-C and 19–20. Enhanced small-screen workflows | P1-29 through P1-39, P2-16, P2-20, P2-23 |
-| AI-01 External read-only AI connector | P2-D. Host authorization, tools and setup | P2-04, P2-07, P2-11, P2-15, P2-19, P2-24, P2-26 |
-| EXT-01 Chrome Browser Companion | 17 | P2-04, P2-07, P2-12, P2-16, P2-20, P2-24, P2-27 |
-| X-LANG Five live locales | All visible web and portal surfaces | P1-02, P1-06, P1-16, P1-18, P1-24, P1-29, P1-40, P2-10, P2-14, P2-22, P2-25 |
-| X-ACC Accessibility | Interactive web, consent, mobile and extension surfaces | P1-09, P1-27 through P1-40, P2-20 through P2-25 |
-| X-PRIV Privacy and access | Local files, consent, hosted endpoints, private portals and external reads | P1-03, P1-07, P1-19 through P1-28, P1-39, P2-01 through P2-20, P2-25 |
-| X-OPS Operating and deployment controls | Both deployment pipelines | P1-01, P1-07, P1-20, P1-40, P1-41, P2-14, P2-15, P2-25 through P2-27 |
+| MOB-01 Enhanced mobile | P2-C and 19–20. Enhanced small-screen workflows | P1-29 through P1-39, P3-02, P3-04, P3-06 |
+| AI-01 External read-only AI connector | P2-D. Host authorization, tools and setup | P2-04, P2-07, P2-11, P3-01, P3-03, P3-07, P2-26 |
+| EXT-01 Chrome Browser Companion | 17 | P2-04, P2-07, P2-12, P3-02, P3-04, P3-07, P2-27 |
+| X-LANG Five live locales | All visible web and portal surfaces | P1-02, P1-06, P1-16, P1-18, P1-24, P1-29, P1-40, P2-10, P2-14, P2-22, P3-05 through P3-07, P2-25 |
+| X-ACC Accessibility | Interactive web, consent, mobile and extension surfaces | P1-09, P1-27 through P1-40, P2-22, P3-04 through P3-07, P2-25 |
+| X-PRIV Privacy and access | Local files, consent, hosted endpoints, private portals and external reads | P1-03, P1-07, P1-19 through P1-28, P1-39, P2-01 through P2-14, P2-17, P2-18, P3-01 through P3-05, P3-07, P2-25 |
+| X-OPS Operating and deployment controls | Web and Chrome release pipelines | P1-01, P1-07, P1-20, P1-40, P1-41, P2-14, P3-01, P3-03, P3-06, P2-25 through P2-27 |
 | X-DATA Data integrity | Database and browser schemas, data ownership and recoverable upgrades | P1-01 through P1-08, P1-17, P1-22, P2-01 through P2-08 |
-| X-TDD Test-driven change | A first failing check and acceptance evidence per PR | P1-01 through P1-41, P2-01 through P2-27 |
+| X-TDD Test-driven change | A first failing check and acceptance evidence per PR | P1-01 through P1-41, P2-01 through P2-14, P2-17, P2-18, P2-22, P2-25 through P2-27, P3-01 through P3-07 |

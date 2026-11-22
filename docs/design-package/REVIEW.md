@@ -1,6 +1,6 @@
 # Design and functionality review
 
-Phase 1 delivers the public workspace in English, French, Spanish, Portuguese and German. Phase 2 adds game-theme projects, staff publishing, enhanced mobile workflows, the external read-only connector and the Chrome extension. The browser prototype is available now. Production acceptance for both phases remains future work.
+Phase 1 delivers the public workspace in English, French, Spanish, Portuguese and German. Phase 2 adds project and theme services and staff publishing. Phase 3 covers the game developer portal, enhanced mobile workflows, the external read-only connector and the Chrome extension. The [implementation plan](docs/Color_Kitchen_Implementation_Plan.md) tracks the remaining work and the shared release gates.
 
 ## Decisions and changes
 
@@ -12,7 +12,7 @@ Phase 1 delivers the public workspace in English, French, Spanish, Portuguese an
 | The product design and delivery plan gave staff different responsibilities for translations. | Interface messages and placeholders go through code review and CI. Staff edit assigned catalog and policy locales. A publisher approves and releases one complete five-language revision in a single command. A concurrent change to the reviewed draft requires review again. The four versioned notices use stable slugs and a shared effective date. |
 | The Popular sort lacked a minimum signal, and the share-link size and fields were open. | Start with 25 consented opens across at least five published palettes over 30 complete UTC dates. Use Featured below that threshold. Palette links carry approved swatches and role bindings in a fragment capped at 4 KiB, with JSON backup available for larger payloads. |
 | Theme role names varied by document, and a protected read could refer to several themes in the same project. | Use the six keys shown in P2-A. A protected lookup supplies the selected project and exact theme asset. Both theme read paths resolve the current release with fresh access checks. Withdrawal and archival stop new reads, and restoring an archive requires an explicit new release to expose it again. |
-| Work items inherited whole-layer prerequisites, and the extension could be held up by unrelated real-game integration. | Schedule using explicit prerequisites and start local slices against fixtures. Shared migrations and production promotion retain their evidence gates. The extension can ship once its own web handoff and store checks pass. Full Phase 2 still requires verified live game integration and the other release criteria. |
+| Work items inherited whole-layer prerequisites, and the extension could be held up by unrelated real-game integration. | Schedule using explicit prerequisites and start local slices against fixtures. Shared migrations and production promotion retain their evidence gates. The extension can ship once its own web handoff and store checks pass. Full Phase 3 acceptance requires verified live game integration and the other release criteria. |
 
 ## Open release dependencies
 
