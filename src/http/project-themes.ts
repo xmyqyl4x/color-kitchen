@@ -5,7 +5,7 @@ import { findProjectActor, listProjects, listThemeAssets, projectRole, readPubli
 import { themeSnapshot, type ThemeSnapshot } from '../projects/snapshot.js';
 import { developerThemes, exportPublicTheme } from '../projects/workflows.js';
 import type { ProtectedDependencies } from './identity.js';
-import { apiData, apiRevision, apiUuid, authorizeApi, etag, protectedApiError, requireMatch } from './protected-api.js';
+import { apiData, apiRevision, apiUuid, apiQuery, authorizeApi, etag, protectedApiError, requireMatch } from './protected-api.js';
 import { fields, readJsonBody } from './request.js';
 import { apiError, json } from './response.js';
 
@@ -17,14 +17,6 @@ const invalid = () => apiError(400, 'invalid_input');
 const method = (allow: string) => apiError(405, 'method_not_allowed', { Allow: allow });
 const read = (request: Request) => request.method === 'GET' || request.method === 'HEAD';
 
-function queryFor(url: URL, keys: readonly string[]) {
-  const query = new Map<string, string>();
-  for (const [key, value] of url.searchParams) {
-    if (!keys.includes(key) || query.has(key)) return null;
-    query.set(key, value);
-  }
-  return query;
-}
 
 function exportResponse(output: Awaited<ReturnType<typeof exportPublicTheme>>) {
   if (!output) return missing();
@@ -54,7 +46,7 @@ async function readAsset(client: ClientBase, actor: ProjectActor, target: Target
   if (resource !== 'revisions' || tail.length > 3) return missing();
   const workflows = developerThemes(client, actor);
   if (identifier === 'compare' && tail.length === 2) {
-    const query = queryFor(url, ['before', 'after']);
+    const query = apiQuery(url, ['before', 'after']);
     const before = apiRevision(query?.get('before')), after = apiRevision(query?.get('after'));
     if (!before || !after) return invalid();
     const comparison = await workflows.compare({ ...target, before, after });
@@ -69,11 +61,11 @@ async function readAsset(client: ClientBase, actor: ProjectActor, target: Target
       return saved ? apiData(saved, 200, etag(saved.revision)) : missing();
     }
     case 'export': {
-      const format = queryFor(url, ['format'])?.get('format');
+      const format = apiQuery(url, ['format'])?.get('format');
       return format === 'json' || format === 'css' ? exportResponse(await workflows.exportRevision({ ...target, revision, format })) : invalid();
     }
     case 'preview': {
-      const query = queryFor(url, ['locale', 'mode']);
+      const query = apiQuery(url, ['locale', 'mode']);
       const locale = query?.get('locale') ?? 'en', mode = query?.get('mode') ?? 'fixture';
       if (!query || !isLocale(locale) || (mode !== 'live' && mode !== 'fixture')) return invalid();
       const preview = await workflows.preview({ ...target, revision, locale, mode });
@@ -132,7 +124,7 @@ export function projectThemesHttp(deps: ProtectedDependencies) {
         const [id, child, ...rest] = path.slice(releasesPath.length + 1).split('/');
         if (!id || !apiUuid.test(id) || rest.length) return missing();
         if (child === 'export') {
-          const format = queryFor(url, ['format'])?.get('format');
+          const format = apiQuery(url, ['format'])?.get('format');
           return format === 'json' || format === 'css' ? exportResponse(await deps.withClient(client => exportPublicTheme(client, id, format))) : invalid();
         }
         if (child !== undefined || url.search) return missing();
@@ -154,7 +146,7 @@ export function projectThemesHttp(deps: ProtectedDependencies) {
         if (asset === undefined) {
           if (!read(request)) return method('GET, HEAD');
           if (!await projectRole(client, actor, projectId)) return missing();
-          const query = queryFor(url, ['after', 'limit']);
+          const query = apiQuery(url, ['after', 'limit']);
           const after = query?.get('after'), limit = query?.get('limit') ?? '20';
           if (!query || (after !== undefined && !apiUuid.test(after)) || !/^(?:[1-9]|[1-9][0-9])$/.test(limit)) return invalid();
           const rows = await listThemeAssets(client, actor, projectId, after, Number(limit) + 1);

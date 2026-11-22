@@ -7,6 +7,8 @@ import { catalogHttp } from './public-catalog.js';
 import { operationsHttp } from './operations.js';
 import { identityFromEnvironment } from './identity.js';
 import { projectThemesHttp } from './project-themes.js';
+import { adminCatalogHttp } from './admin-catalog.js';
+import { deliverCatalogInvalidation, revalidateCatalog } from '../catalog/invalidation.js';
 import { httpServer } from './server.js';
 import { webHttp } from '../web/http.js';
 import { inquiryWebhook } from '../operations/inquiry-delivery.js';
@@ -25,7 +27,9 @@ async function withClient<T>(work: (client: ClientBase) => Promise<T>) {
 }
 const measurement = process.env.COLOR_KITCHEN_MEASUREMENT === 'true';
 const catalog = catalogHttp({ withClient, measurement });
-const projectThemes = projectThemesHttp({ withClient, verifyIdentity: identityFromEnvironment(process.env) });
+const verifyIdentity = identityFromEnvironment(process.env);
+const projectThemes = projectThemesHttp({ withClient, verifyIdentity });
+const adminCatalog = adminCatalogHttp({ withClient, verifyIdentity });
 const gatewayKey = process.env.AI_GATEWAY_API_KEY;
 const model = process.env.COLOR_KITCHEN_GUIDE_MODEL;
 const provider = gatewayKey && model ? aiColorGuideProvider(createGateway({ apiKey: gatewayKey })(model)) : undefined;
@@ -66,13 +70,21 @@ const deliver = delivery && contact ? inquiryWebhook({ url: delivery, token: pro
 const server = httpServer(async request => {
   const { pathname } = new URL(request.url);
   if (pathname === guidePath) return guide(request);
-  if (pathname.startsWith('/api/')) return await operations(request) ?? await projectThemes(request) ?? catalog(request);
+  if (pathname.startsWith('/api/')) return await operations(request) ?? await projectThemes(request) ?? await adminCatalog(request) ?? catalog(request);
   return web(request);
 },
   process.env.COLOR_KITCHEN_ORIGIN ?? 'http://localhost:' + port);
 server.listen(port, process.env.HOST ?? '127.0.0.1', () => console.log('Color Kitchen HTTP server listening on port ' + port));
 let stopping = false;
 let deliveryTimer: ReturnType<typeof setTimeout> | undefined;
+let catalogTimer: ReturnType<typeof setTimeout> | undefined;
+async function pollCatalog() {
+  if (stopping) return;
+  try { await withClient(client => deliverCatalogInvalidation(client, revalidateCatalog)); }
+  catch { console.error('Catalog invalidation queue processing is temporarily unavailable.'); }
+  if (!stopping) catalogTimer = setTimeout(pollCatalog, 5000).unref();
+}
+if (verifyIdentity) catalogTimer = setTimeout(pollCatalog, 5000).unref();
 async function pollInquiries() {
   if (stopping || !contact || !deliver) return;
   try { await withClient(client => publicSupport({ client, ...contact, provider: deliver }).deliverNext()); }
@@ -85,6 +97,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     if (stopping) return;
     stopping = true;
     clearTimeout(deliveryTimer);
+    clearTimeout(catalogTimer);
     server.close(() => { void pool.end(); });
   });
 }

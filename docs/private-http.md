@@ -22,3 +22,22 @@ Use `/api/v1/projects` to list the caller's active projects. In the paths below,
 | `GET /api/v1/theme-releases/{releaseId}` | Read a current public release without signing in. Add `/export?format=json` or `/export?format=css` for a file representation. |
 
 Release and withdrawal require the asset row-version in `If-Match` and a current UUIDv7 `Idempotency-Key`. Retries keep both original headers and their original request body. Reusing the key with new input returns `409`. A stale new write returns `412` with the current version and ETag. A missing precondition returns `428`. Inaccessible and missing themes share a `404` response. All theme routes use `Cache-Control: no-store`.
+
+## Staff catalog
+
+The endpoints below start at `/api/v1/admin/catalog`. `R` denotes `/{itemId}/revisions` and `D` denotes `R/{revision}`. Active catalog staff roles are separate from project membership. All staff can inspect drafts and audit. Editors can edit drafts and publishers can review and publish. Pass `locale=en`, `fr`, `es`, `pt`, or `de` for localized responses, or let the server use `Accept-Language`.
+
+| Method and path | Input and result |
+| --- | --- |
+| `GET /roles` | List the caller's active staff roles. |
+| `GET /` | Search by `q` (slug) and `kind`. Use `next` as `after` for another page. |
+| `POST /` | Create an item using `{itemId,kind,slug,metadata}` and `If-Match: "0"`. |
+| `GET R` / `POST R` | List revisions with the optional `before` cursor or fork `{sourceRevision}` using that revision's edit version as `If-Match`. |
+| `GET D` | Read the translation coverage, stale source locales, provenance, revision and version pointers. The ETag gives the edit version. |
+| `PUT D/translations/{locale}` | Write `{title,summary,body}` using the edit version in `If-Match`. Use `null` for an absent body. |
+| `PUT D/metadata` | Replace the metadata object using the edit version in `If-Match`. The object includes `payload`, `origin`, `licenseId`, provenance and the optional ISO effective date. |
+| `GET D/comparison?base=1` | Compare translations and metadata with revision 1. |
+| `POST D/review` / `POST D/publication` | Review or approve and commit `{mode,editVersion}` using the item version in `If-Match`. Set `mode` to `publish` for a complete draft or `rollback` for a previously published revision. Publication requires a UUIDv7 `Idempotency-Key`. |
+| `GET /audit` | Filter by `itemId` or `action`, and page with the exact `occurredAt` and `eventId` from `next` in `beforeTime` and `beforeId`. |
+
+Use the exact API base path for the catalog root. A stale `412` returns the current relevant versions. Missing required translations return `422` with a locale list. Review checks the requested versions without saving an approval. Publication repeats the checks inside its transaction and persists the approval, pointer, audit, retryable invalidation job and receipt together. Public JSON revalidates on every read, and catalog HTML uses `no-store`. The server retries due invalidation jobs after interrupted publication responses or failed delivery.

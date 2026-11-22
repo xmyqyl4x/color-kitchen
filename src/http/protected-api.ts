@@ -17,6 +17,15 @@ export function apiRevision(value: unknown) {
   return typeof text === 'string' && /^[1-9]\d{0,9}$/.test(text) && Number(text) <= 2147483647 ? Number(text) : null;
 }
 
+export function apiQuery(url: URL, keys: readonly string[]) {
+  const query = new Map<string, string>();
+  for (const [key, value] of url.searchParams) {
+    if (!keys.includes(key) || query.has(key)) return null;
+    query.set(key, value);
+  }
+  return query;
+}
+
 export function requireMatch(request: Request) {
   const value = request.headers.get('if-match');
   if (value === null) throw new ApiInputError(428, 'precondition_required');
