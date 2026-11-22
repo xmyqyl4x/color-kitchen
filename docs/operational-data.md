@@ -9,3 +9,7 @@
 | Contact handling and delivery: case state, creation, closure and purge times, queue state, attempts, retry time, lease, delivery time, provider reference and safe error code | Support and delivery operations | Remove with the expired case. Restrict queue changes to the delivery worker and approved support workflow. |
 
 Run `SELECT * FROM ck.purge_expired_operations()` from the authorized maintenance job. It reports counts and takes at most 100 unlocked rows per data class by default. The job can repeat bounded batches until they are empty. Start with provider or gateway usage budgets when an approved shared limiter exists.
+
+The PostgreSQL Guide budget adapter provides an atomic local and CI fallback for shared service and provider windows. It stores only bucket, window and units used. Run `purgeGuideBudget` for expired windows. Select the deployed limiter after confirming the production gateway or provider contract.
+
+The inquiry repository takes a keyring with distinct encryption and HMAC keys, including older key IDs needed for replay and delivery. A worker uses the stable provider idempotency key from its claim. An expired lease goes to reconciliation. A worker can schedule an earlier retry when delivery was ruled out or the provider's deduplication window covers the retry. Deploy scheduling and real provider credentials through the approved operations adapter.
