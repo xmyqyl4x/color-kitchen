@@ -1,4 +1,5 @@
-import type { ColorValue, Palette } from '../model/color.js';
+import type { Palette } from '../model/color.js';
+import type { Gradient } from '../gradient/gradient.js';
 
 type DocumentBase = Readonly<{
   schemaVersion: 1;
@@ -10,15 +11,7 @@ type DocumentBase = Readonly<{
 
 export type PaletteDocument = DocumentBase & Readonly<{ kind: 'palette'; palette: Palette }>;
 
-export type GradientDocument = DocumentBase & Readonly<{
-  kind: 'gradient';
-  type: 'linear' | 'radial' | 'conic';
-  angle?: number;
-  center?: readonly [number, number];
-  interpolation: 'srgb' | 'oklch';
-  huePath?: 'shorter' | 'longer' | 'increasing' | 'decreasing';
-  stops: readonly Readonly<{ id: string; position: number; color: ColorValue }>[];
-}>;
+export type GradientDocument = DocumentBase & Readonly<{ kind: 'gradient' }> & Gradient;
 
 export type BoardDocument = DocumentBase & Readonly<{
   kind: 'board';
