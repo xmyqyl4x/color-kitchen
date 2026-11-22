@@ -32,3 +32,5 @@ export type MediaResults = {
 export type MediaReply =
   | { ok: true; value: MediaResults[MediaTask['kind']] }
   | { ok: false; code: MediaErrorCode; message: string };
+export type MediaProgress = 'queued' | 'loading' | 'processing' | 'complete' | 'cancelled' | 'failed';
+export type MediaUpdate = MediaReply | { progress: 'loading' | 'processing' };

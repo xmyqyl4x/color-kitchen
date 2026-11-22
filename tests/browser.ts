@@ -8,7 +8,13 @@ const compiled = new URL('../', import.meta.url);
 export async function withBrowserPage<T>(work: (page: Page) => Promise<T>): Promise<T> {
   const server = createServer(async (request, response) => {
     if (request.url === '/') {
-      response.writeHead(200, { 'Content-Type': 'text/html' }).end('<!doctype html><title>Workspace fixture</title>');
+      response.writeHead(200, { 'Content-Type': 'text/html' }).end('<!doctype html><title>Workspace fixture</title>' +
+        '<script type="importmap">{"imports":{"pdf-lib":"/vendor/pdf-lib.js"}}</script>');
+      return;
+    }
+    if (request.url === '/vendor/pdf-lib.js') {
+      const source = await readFile(new URL('../node_modules/pdf-lib/dist/pdf-lib.esm.min.js', compiled));
+      response.writeHead(200, { 'Content-Type': 'text/javascript' }).end(source);
       return;
     }
     if (!request.url || !/^\/src\/(?:[a-z0-9-]+\/)*[a-z0-9-]+\.js$/i.test(request.url)) {

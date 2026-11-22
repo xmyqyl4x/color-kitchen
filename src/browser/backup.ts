@@ -3,7 +3,7 @@ import { checkPalette, openPaletteSession } from '../palette/document.js';
 import type { BackupEnvelope, Collection, CreativeDocument, StoredAsset } from './document.js';
 
 const maxAssetBytes = 20 * 1024 * 1024;
-const maxBackupBytes = 32 * 1024 * 1024;
+export const maxBackupBytes = 32 * 1024 * 1024;
 const idPattern = /^[A-Za-z0-9][A-Za-z0-9_-]{0,119}$/;
 const boardLayouts = ['bottom-strip', 'side-strip', 'two-image', 'square'];
 
