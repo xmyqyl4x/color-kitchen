@@ -30,7 +30,7 @@ export type BoardDocument = DocumentBase & Readonly<{
 
 export type CreativeDocument = PaletteDocument | GradientDocument | BoardDocument;
 export type StoredAsset = Readonly<{ id: string; blob: Blob }>;
-export type Collection = Readonly<{ id: string; name: string; documentIds: readonly string[] }>;
+export type Collection = Readonly<{ id: string; name: string; revision: number; documentIds: readonly string[] }>;
 export type StoredPreference = Readonly<{ key: string; value: boolean | number | string | null }>;
 
 export type BackupEnvelope = Readonly<{
