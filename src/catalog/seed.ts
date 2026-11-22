@@ -4,6 +4,7 @@ import type { ClientBase } from 'pg';
 import { inTransaction } from '../db/transaction.js';
 import { locales, type Locale } from '../model/locales.js';
 import type { ColorValue } from '../model/color.js';
+import { parseColor } from '../color/parse.js';
 import { slugPattern } from './repository.js';
 import { publishLocalizedRevision } from './publication.js';
 
@@ -38,8 +39,7 @@ export type CatalogSeed = CommonSeed & (
 
 function hexColor(input: string): ColorValue {
   if (!/^#[\da-f]{6}$/i.test(input)) throw new RangeError(`Invalid seed color: ${input}`);
-  const channel = (offset: number) => Number.parseInt(input.slice(offset, offset + 2), 16) / 255;
-  return { space: 'srgb', components: [channel(1), channel(3), channel(5)], alpha: 1 };
+  return parseColor(input);
 }
 
 const fontAssets = new URL('../../../catalog/fonts/', import.meta.url);
