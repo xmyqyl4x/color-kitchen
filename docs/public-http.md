@@ -45,3 +45,20 @@ Send an anonymous JSON POST to `/api/v1/guide` when the user submits the prompt.
 The supported locales are `en`, `fr`, `es`, `pt` and `de`. Prompts allow 2,000 characters. History is optional with up to eight `{role,text}` turns (`user` or `assistant`, up to 1,000 characters each). Send at most twelve color values only with explicit `shareSwatches: true`. Success returns `{version,requestId,locale,data}`, with computed contrast assessments in `data.suggestion` when requested. Errors include `requestId` and `error.code` with `localAvailable: true`. A 429 carries `Retry-After` and `error.retryAt` when available. There are distinct errors for invalid requests, unavailable service, invalid provider output and provider timeouts. All replies use `Cache-Control: no-store`.
 
 Configure the optional server-side provider with `AI_GATEWAY_API_KEY`, `COLOR_KITCHEN_GUIDE_MODEL` (provider/model), `COLOR_KITCHEN_GUIDE_REQUESTS_PER_MINUTE` and `COLOR_KITCHEN_GUIDE_DAILY_UNITS`. Daily units conservatively budget the input and maximum output. Keep the key in the server environment. Hosted replies require configured credentials and budget. Local guidance remains available independently.
+
+## Inquiries, consent and aggregate use
+
+| Method and path | Request and success |
+| --- | --- |
+| POST `/api/v1/inquiries/contact` | `{requestId,purpose,locale,replyEmail,message}`. Use `support`, `privacy`, `accessibility` or `licensing`. A durable queue receipt returns 202. |
+| POST `/api/v1/inquiries/advertising` | Same fields with purpose `advertising`. A durable queue receipt returns 202. |
+| GET `/api/v1/consent` | Returns both verified optional choices, defaulting to false. |
+| POST `/api/v1/consent` | Set `{advertising:boolean,analytics:boolean}`. Both false withdraws the choice and removes its first-party cookie. |
+| POST `/api/v1/events/catalog-open/nonce` | Send only `{itemId}` after an explicit public palette open. Returns the signed action token. |
+| POST `/api/v1/events/catalog-open` | Send only `{token}` and reuse that token for retry. Returns 202 once counted or on safe replay. |
+
+Use a new UUID for each inquiry and retain it across retries with the same content. Matching retries return the original receipt during the first 24 hours, changed content returns 409, and expired receipts return 410 while retained. A queue receipt confirms acceptance for processing. Messages allow up to 12,000 characters and reply addresses up to 254. Private workspace data belongs on the device.
+
+Requests stay on the same origin and all responses use `no-store`. Event intake checks the signed consent cookie on every request, returns 403 for disabled measurement, and accepts only published palettes. Signed event tokens expire after 24 hours and carry no user identifier. The signed choice lasts up to 90 days. A deployment uses HTTPS for the Secure, host-only consent cookie.
+
+Configure independent 32-byte hex keys with `COLOR_KITCHEN_CONTACT_ENCRYPT_KEY`, `COLOR_KITCHEN_CONTACT_HMAC_KEY`, `COLOR_KITCHEN_CONSENT_KEY` and `COLOR_KITCHEN_EVENT_KEY`. The contact key identifier defaults to `contact-v1`, and configurable inquiry retention defaults to 30 days. Keep previous contact keys in the deployment key resolver during rotation. Event counting also requires `COLOR_KITCHEN_MEASUREMENT=true`. Delivery runs separately through the configured inquiry worker and provider.

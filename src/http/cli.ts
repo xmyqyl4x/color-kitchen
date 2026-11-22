@@ -1,9 +1,10 @@
-import pg from 'pg';
+import pg, { type ClientBase } from 'pg';
 import { createGateway } from 'ai';
 import { aiColorGuideProvider } from '../guide/ai-provider.js';
 import { postgresGuideAdmission } from '../guide/admission.js';
 import { guideHttp, guidePath } from './guide.js';
 import { catalogHttp } from './public-catalog.js';
+import { operationsHttp } from './operations.js';
 import { httpServer } from './server.js';
 
 const connectionString = process.env.DATABASE_URL;
@@ -12,14 +13,13 @@ const port = Number(process.env.PORT ?? 3000);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Set PORT to a valid TCP port.');
 const pool = new pg.Pool({ connectionString, max: 10, connectionTimeoutMillis: 3000, statement_timeout: 5000 });
 pool.on('error', () => console.error('An idle PostgreSQL client was disconnected.'));
-const catalog = catalogHttp({
-  async withClient(work) {
-    const client = await pool.connect();
-    try { return await work(client); }
-    finally { client.release(); }
-  },
-  measurement: process.env.COLOR_KITCHEN_MEASUREMENT === 'true',
-});
+async function withClient<T>(work: (client: ClientBase) => Promise<T>) {
+  const client = await pool.connect();
+  try { return await work(client); }
+  finally { client.release(); }
+}
+const measurement = process.env.COLOR_KITCHEN_MEASUREMENT === 'true';
+const catalog = catalogHttp({ withClient, measurement });
 const gatewayKey = process.env.AI_GATEWAY_API_KEY;
 const model = process.env.COLOR_KITCHEN_GUIDE_MODEL;
 const provider = gatewayKey && model ? aiColorGuideProvider(createGateway({ apiKey: gatewayKey })(model)) : undefined;
@@ -34,7 +34,29 @@ const guide = guideHttp({ provider, now: () => new Date(),
     provider: { limit: budget('COLOR_KITCHEN_GUIDE_DAILY_UNITS'), windowSeconds: 86_400 },
   }),
 });
-const server = httpServer(request => new URL(request.url).pathname === guidePath ? guide(request) : catalog(request),
+function secret(name: string) {
+  const setting = process.env[name];
+  if (setting === undefined) return undefined;
+  if (!/^[0-9a-f]{64}$/i.test(setting)) throw new Error('Invalid key format for ' + name);
+  return Buffer.from(setting, 'hex');
+}
+const encryptKey = secret('COLOR_KITCHEN_CONTACT_ENCRYPT_KEY');
+const hmacKey = secret('COLOR_KITCHEN_CONTACT_HMAC_KEY');
+const keyId = process.env.COLOR_KITCHEN_CONTACT_KEY_ID ?? 'contact-v1';
+const contactDays = Number(process.env.COLOR_KITCHEN_CONTACT_RETENTION_DAYS ?? 30);
+if (!/^[a-z0-9_-]{1,48}$/i.test(keyId)) throw new Error('Invalid contact key identifier.');
+if (!Number.isInteger(contactDays) || contactDays < 1 || contactDays > 365) throw new Error('Invalid inquiry retention period.');
+const active = encryptKey && hmacKey ? { id: keyId, encryptKey, hmacKey } : undefined;
+const operations = operationsHttp({
+  withClient, measurement,
+  contact: active && { keys: { active, resolve: id => id === active.id ? active : undefined },
+    retentionMs: contactDays * 86_400_000 },
+  consentKey: secret('COLOR_KITCHEN_CONSENT_KEY'), eventKey: secret('COLOR_KITCHEN_EVENT_KEY'),
+});
+const server = httpServer(async request => {
+  if (new URL(request.url).pathname === guidePath) return guide(request);
+  return await operations(request) ?? catalog(request);
+},
   process.env.COLOR_KITCHEN_ORIGIN ?? 'http://localhost:' + port);
 server.listen(port, process.env.HOST ?? '127.0.0.1', () => console.log('Color Kitchen HTTP server listening on port ' + port));
 let stopping = false;
