@@ -8,13 +8,22 @@ import { publishLocalizedRevision } from './publication.js';
 import { planCatalogPublication, type CatalogStaffRole, type PublicationIssue } from './publication-rules.js';
 import { catalogKinds, slugPattern, type CatalogKind } from './repository.js';
 
-type Translation = { locale: Locale; title: string; summary: string; body: string | null };
-type Metadata = { payload: Record<string, unknown>; origin: 'original' | 'licensed'; sourceUri?: string | null;
+export type Translation = { locale: Locale; title: string; summary: string; body: string | null };
+export type Metadata = { payload: Record<string, unknown>; origin: 'original' | 'licensed'; sourceUri?: string | null;
   sourceVersion?: string | null; sourceDigest?: string | null; licenseId: string; licenseUri?: string | null;
   attribution?: string | null; effectiveAt?: Date | string | null };
-type CatalogDraft = { itemId: string; kind: CatalogKind; slug: string; revision: number; editVersion: string; itemVersion: string;
+export type CatalogDraft = { itemId: string; kind: CatalogKind; slug: string; revision: number; editVersion: string; itemVersion: string;
   publishedRevision: number | null; sealedAt: Date | null; missingLocales: Locale[]; translations: Translation[];
-  metadata: Metadata; review: { decision: string; editVersion: string } | null };
+  metadata: Metadata; review: { decision: string; editVersion: string } | null; staleLocales: Locale[] };
+
+export async function catalogStaffRoles(client: ClientBase, actor: StoredActor) {
+  const { rows } = await client.query<{ role: CatalogStaffRole }>(`SELECT role FROM ck.catalog_staff
+    WHERE organization_id=$1 AND principal_id=$2 AND inactive_at IS NULL ORDER BY role`, [actor.organizationId, actor.principalId]);
+  return rows.map(({ role }) => role);
+}
+
+const sourceDigest = `coalesce((SELECT encode(sha256(convert_to(jsonb_build_array(title,summary,body)::text,'UTF8')),'hex')
+  FROM ck.catalog_text WHERE item_id=$1 AND rev=$2 AND locale='en'),'')`;
 
 async function lockStaff(client: ClientBase, actor: StoredActor, role: CatalogStaffRole) {
   const { rowCount } = await client.query(`SELECT role FROM ck.catalog_staff WHERE organization_id=$1 AND principal_id=$2
@@ -32,6 +41,8 @@ export async function readCatalogDraft(client: ClientBase, actor: StoredActor, i
   const { rows: [draft] } = await client.query<CatalogDraft>(`SELECT i.item_id AS "itemId",i.kind,i.slug,r.rev AS revision,
     r.edit_version AS "editVersion",i.row_version AS "itemVersion",i.published_rev AS "publishedRevision",r.sealed_at AS "sealedAt",
     coverage.missing_locales AS "missingLocales",
+    ARRAY(SELECT locale::text FROM ck.catalog_translation_source WHERE item_id=$1 AND rev=$2
+      AND source_digest <> ${sourceDigest} ORDER BY locale) AS "staleLocales",
     jsonb_build_object('payload',r.payload,'origin',r.origin,'sourceUri',r.source_uri,'sourceVersion',r.source_version,
       'sourceDigest',r.source_digest,'licenseId',r.license_id,'licenseUri',r.license_uri,'attribution',r.attribution,
       'effectiveAt',r.effective_at) AS metadata,
@@ -75,13 +86,17 @@ export async function forkCatalogDraft(client: ClientBase, actor: StoredActor, i
     if (!copy) return null;
     await client.query(`INSERT INTO ck.catalog_text (item_id,rev,locale,title,summary,body)
       SELECT item_id,$3,locale,title,summary,body FROM ck.catalog_text WHERE item_id=$1 AND rev=$2`, [itemId, sourceRevision, copy.rev]);
+    await client.query(`INSERT INTO ck.catalog_translation_source (item_id,rev,locale,source_digest)
+      SELECT t.item_id,$3,t.locale,coalesce(s.source_digest,${sourceDigest}) FROM ck.catalog_text t
+      LEFT JOIN ck.catalog_translation_source s USING (item_id,rev,locale)
+      WHERE t.item_id=$1 AND t.rev=$2 AND t.locale<>'en'`, [itemId, sourceRevision, copy.rev]);
     await client.query(`INSERT INTO ck.catalog_revision_tag (item_id,rev,tag_id)
       SELECT item_id,$3,tag_id FROM ck.catalog_revision_tag WHERE item_id=$1 AND rev=$2`, [itemId, sourceRevision, copy.rev]);
     return readCatalogDraft(client, actor, itemId, copy.rev);
   });
 }
 
-type DraftEdit = { itemId: string; revision: number; expectedEditVersion: string };
+export type DraftEdit = { itemId: string; revision: number; expectedEditVersion: string };
 async function writeCatalogDraft(client: ClientBase, actor: StoredActor, input: DraftEdit, write: () => Promise<unknown>) {
   return inTransaction(client, async () => {
     if (!await lockStaff(client, actor, 'editor') || !await lockItem(client, input.itemId)) return { status: 'unavailable' } as const;
@@ -98,10 +113,22 @@ async function writeCatalogDraft(client: ClientBase, actor: StoredActor, input: 
 
 export function saveCatalogTranslation(client: ClientBase, actor: StoredActor, input: Translation & DraftEdit) {
   if (!isLocale(input.locale) || !input.title.trim() || !input.summary.trim()) throw new RangeError('Invalid translation.');
-  return writeCatalogDraft(client, actor, input, () => client.query(
-    `INSERT INTO ck.catalog_text (item_id,rev,locale,title,summary,body) VALUES ($1,$2,$3,$4,$5,$6)
-     ON CONFLICT (item_id,rev,locale) DO UPDATE SET title=excluded.title,summary=excluded.summary,body=excluded.body`,
-    [input.itemId, input.revision, input.locale, input.title, input.summary, input.body]));
+  return writeCatalogDraft(client, actor, input, async () => {
+    const { itemId, revision, locale, title, summary, body } = input;
+    if (locale === 'en') {
+      await client.query(`INSERT INTO ck.catalog_translation_source (item_id,rev,locale,source_digest)
+        SELECT item_id,rev,locale,${sourceDigest} FROM ck.catalog_text WHERE item_id=$1 AND rev=$2 AND locale<>'en'
+        ON CONFLICT DO NOTHING`, [itemId, revision]);
+    }
+    await client.query(`INSERT INTO ck.catalog_text (item_id,rev,locale,title,summary,body) VALUES ($1,$2,$3,$4,$5,$6)
+      ON CONFLICT (item_id,rev,locale) DO UPDATE SET title=excluded.title,summary=excluded.summary,body=excluded.body`,
+    [itemId, revision, locale, title, summary, body]);
+    if (locale !== 'en') {
+      await client.query(`INSERT INTO ck.catalog_translation_source (item_id,rev,locale,source_digest)
+        VALUES ($1,$2,$3,${sourceDigest}) ON CONFLICT (item_id,rev,locale) DO UPDATE SET source_digest=excluded.source_digest`,
+      [itemId, revision, locale]);
+    }
+  });
 }
 
 export function saveCatalogMetadata(client: ClientBase, actor: StoredActor, input: DraftEdit, metadata: Metadata) {
@@ -113,7 +140,7 @@ export function saveCatalogMetadata(client: ClientBase, actor: StoredActor, inpu
       metadata.attribution ?? null, metadata.effectiveAt ?? null]));
 }
 
-type Publication = { itemId: string; revision: number; mode: 'publish' | 'rollback'; expectedItemVersion: string;
+export type Publication = { itemId: string; revision: number; mode: 'publish' | 'rollback'; expectedItemVersion: string;
   expectedEditVersion: string; operationId: string };
 type PublicationSuccess = { status: 'published' | 'rolled-back'; version: string; revision: number };
 type PublicationResult = PublicationSuccess | { status: 'expired' | 'unavailable' | 'conflict' } |
@@ -143,6 +170,7 @@ export async function publishStaffCatalog(client: ClientBase, actor: StoredActor
       const version = await publishLocalizedRevision(client, { itemId, revision, itemVersion: expectedItemVersion, editVersion: expectedEditVersion });
       await recordAudit(client, actor, { actorKind: 'staff', kind: 'catalog', action: command.command, resourceId: itemId, operationId,
         before: item.published_rev, after: revision });
+      await client.query('INSERT INTO ck.catalog_invalidation (item_id,item_version) VALUES ($1,$2)', [itemId, version]);
       const result: PublicationSuccess = { status: mode === 'rollback' ? 'rolled-back' : 'published', version, revision };
       await completeCommand(client, actor, operationId, 200, result);
       return result;
@@ -154,13 +182,14 @@ export async function publishStaffCatalog(client: ClientBase, actor: StoredActor
 }
 
 type AuditEntry = { eventId: string; itemId: string; action: string; occurredAt: string;
-  previousRevision: number | null; revision: number | null };
+  previousRevision: number | null; revision: number | null; principalId: string; organizationId: string };
 export async function listCatalogAudit(client: ClientBase, actor: StoredActor, options: { itemId?: string; action?: string; limit?: number;
   before?: Pick<AuditEntry, 'occurredAt' | 'eventId'> } = {}) {
   const limit = options.limit ?? 20;
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new RangeError('Invalid audit limit.');
   const { rows } = await client.query<AuditEntry>(`SELECT event_id AS "eventId",resource_id AS "itemId",action,
-    occurred_at::text AS "occurredAt",before_rev AS "previousRevision",after_rev AS revision FROM ck.audit_event
+    occurred_at::text AS "occurredAt",before_rev AS "previousRevision",after_rev AS revision,
+    actor_id AS "principalId",organization_id AS "organizationId" FROM ck.audit_event
     WHERE resource_kind='catalog' AND actor_kind='staff' AND ($1::uuid IS NULL OR resource_id=$1)
       AND ($2::text IS NULL OR action=$2) AND ($3::timestamptz IS NULL OR (occurred_at,event_id)<($3,$4::uuid))
       AND EXISTS (SELECT 1 FROM ck.catalog_staff WHERE organization_id=$5 AND principal_id=$6 AND inactive_at IS NULL)
