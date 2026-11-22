@@ -10,6 +10,8 @@ Run `npm run db:migrate` with `DATABASE_URL` set to an intended development data
 
 Start the compiled HTTP server with `npm start` and open `http://localhost:3000` for the public workspace. See the [public HTTP contract](docs/public-http.md) for setup, examples and cache behavior.
 
+The [local release runbook](docs/local-release.md) covers the Docker image, rollout checks and recovery.
+
 ## Export fidelity
 
 | Format | Transparency | Color and fallback |

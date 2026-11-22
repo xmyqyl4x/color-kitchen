@@ -1,0 +1,14 @@
+services:
+  web:
+    image: ${COLOR_KITCHEN_IMAGE:?Set the verified local candidate image}
+    pull_policy: never
+    env_file: ${COLOR_KITCHEN_RUNTIME_ENV:?Set the path to a local runtime environment file}
+    ports:
+      - "127.0.0.1:${COLOR_KITCHEN_RELEASE_PORT:-58320}:3000"
+    networks:
+      - database
+
+networks:
+  database:
+    external: true
+    name: ${COLOR_KITCHEN_DATABASE_NETWORK:?Set the approved local PostgreSQL network}

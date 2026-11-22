@@ -6,7 +6,9 @@ Run `npm run release:rehearse` with the existing loopback `COLOR_KITCHEN_TEST_DA
 
 ## Staging evidence
 
-The repository has no verified shared PostgreSQL destination and reuse map. The platform owner must confirm the distinct staging and production aliases, PostgreSQL version, role grants, migration owner and prior revision using the [repository evidence requirements](design-package/docs/Repository_Evidence.md). Obtain the stage-only vendor settings and the candidate and previous image digests from the deployment owner. Keep secrets and connection strings out of the evidence.
+Phase 1 used a dedicated local Docker network and PostgreSQL volume with synthetic records. The migration identity owns the Color Kitchen schema and ledger. The web runtime reads the published catalog and has the grants required for operational records. The [local staging evidence](release-evidence/p1-40-local.json) identifies the verified roles, catalog and ledger digests, versioned images and independent restoration. Keyboard navigation and Chromium accessibility-tree checks ran in the browser. A spoken screen-reader walkthrough and live vendor checks require their own evidence.
+
+The local decision maps the staging database to the repository-owned `ck` catalog and operational relations and `ck_migrations.applied`. Color Kitchen uses those objects directly in the isolated PostgreSQL volume. The [repository evidence requirements](design-package/docs/Repository_Evidence.md) apply to any future shared or hosted PostgreSQL target. Keep secrets and connection strings out of the evidence.
 
 | Evidence | Owner |
 | --- | --- |
@@ -18,7 +20,7 @@ The repository has no verified shared PostgreSQL destination and reuse map. The 
 
 Run the acceptance suite against the approved staging origin and record the actual stage-only provider responses. Capture a clean database inventory and approved synthetic backup, release the candidate to staging, and record the behavior of the previous read path against compatible schema. Exercise traffic rollback to the previous image. Restore the stage-only archive into a separate database, check ledger and content, and verify public HTTP reads before treating the independent restore as usable. Preserve the original stage database and any compatible writes. Record timing and the chosen rollback target in the report.
 
-Use `npm run release:gate -- <evidence.json> <expected-commit> <expected-image-digest>` to check the report against the candidate and repository ledger. It accepts the following fields.
+For a hosted release, use `npm run release:gate -- <evidence.json> <expected-commit> <expected-image-digest>` to check its evidence against the candidate and repository ledger. The hosted gate accepts the following fields.
 
 - Root fields `version: 1` and `target: "staging"`.
 - `deployment` with `commit`, `image`, `stagingOrigin`, `productionOrigin` and `releaseOwner`.

@@ -1,8 +1,32 @@
-import { createServer } from 'node:http';
+import { createServer, type IncomingMessage } from 'node:http';
 import { Readable } from 'node:stream';
 import { apiError } from './response.js';
 
 export type HttpHandler = (request: Request) => Response | Promise<Response>;
+
+function finishRejectedUpload(request: IncomingMessage) {
+  if (request.complete || request.destroyed) return;
+  return new Promise<void>(resolve => {
+    let discarded = 0;
+    const timeout = setTimeout(finish, 150);
+    function finish() {
+      clearTimeout(timeout);
+      request.off('data', discard);
+      request.off('end', finish);
+      request.off('close', finish);
+      resolve();
+    }
+    function discard(chunk: Buffer) {
+      discarded += chunk.length;
+      if (discarded >= 65_536) {
+        request.pause();
+        finish();
+      }
+    }
+    request.once('end', finish).once('close', finish).on('data', discard);
+    request.resume();
+  });
+}
 
 export function httpServer(handler: HttpHandler, origin?: string) {
   const serverOrigin = origin ? new URL(origin).origin : undefined;
@@ -32,6 +56,9 @@ export function httpServer(handler: HttpHandler, origin?: string) {
     }
     if (outgoing.destroyed) return;
     try {
+      // Give a finishing chunked upload time to reach EOF before closing its connection.
+      if (response.status === 413) await finishRejectedUpload(incoming);
+      if (outgoing.destroyed) return;
       const body = method === 'HEAD' || !response.body ? undefined : Buffer.from(await response.arrayBuffer());
       outgoing.writeHead(response.status, Object.fromEntries(response.headers)).end(body);
     } catch {
