@@ -5,9 +5,9 @@ import { commandReplay, completeCommand, currentOperationId, recordAudit, reserv
 import { inTransaction } from '../db/transaction.js';
 import { isLocale, type Locale } from '../model/locales.js';
 import { publishLocalizedRevision } from './publication.js';
+import { planCatalogPublication, type CatalogStaffRole, type PublicationIssue } from './publication-rules.js';
 import { catalogKinds, slugPattern, type CatalogKind } from './repository.js';
 
-type StaffRole = 'editor' | 'publisher';
 type Translation = { locale: Locale; title: string; summary: string; body: string | null };
 type Metadata = { payload: Record<string, unknown>; origin: 'original' | 'licensed'; sourceUri?: string | null;
   sourceVersion?: string | null; sourceDigest?: string | null; licenseId: string; licenseUri?: string | null;
@@ -16,7 +16,7 @@ type CatalogDraft = { itemId: string; kind: CatalogKind; slug: string; revision:
   publishedRevision: number | null; sealedAt: Date | null; missingLocales: Locale[]; translations: Translation[];
   metadata: Metadata; review: { decision: string; editVersion: string } | null };
 
-async function lockStaff(client: ClientBase, actor: StoredActor, role: StaffRole) {
+async function lockStaff(client: ClientBase, actor: StoredActor, role: CatalogStaffRole) {
   const { rowCount } = await client.query(`SELECT role FROM ck.catalog_staff WHERE organization_id=$1 AND principal_id=$2
     AND role=$3 AND inactive_at IS NULL FOR SHARE`, [actor.organizationId, actor.principalId, role]);
   return rowCount === 1;
@@ -116,7 +116,8 @@ export function saveCatalogMetadata(client: ClientBase, actor: StoredActor, inpu
 type Publication = { itemId: string; revision: number; mode: 'publish' | 'rollback'; expectedItemVersion: string;
   expectedEditVersion: string; operationId: string };
 type PublicationSuccess = { status: 'published' | 'rolled-back'; version: string; revision: number };
-type PublicationResult = PublicationSuccess | { status: 'expired' | 'unavailable' | 'conflict' | 'invalid' } |
+type PublicationResult = PublicationSuccess | { status: 'expired' | 'unavailable' | 'conflict' } |
+  { status: 'invalid'; issue?: PublicationIssue; locales?: Locale[] } |
   { status: 'stale'; itemVersion: string; editVersion: string };
 
 export async function publishStaffCatalog(client: ClientBase, actor: StoredActor, input: Publication): Promise<PublicationResult> {
@@ -133,15 +134,12 @@ export async function publishStaffCatalog(client: ClientBase, actor: StoredActor
       if (replay) return replay.conflict ? { status: 'conflict' } : replay.value;
       const draft = await readCatalogDraft(client, actor, itemId, revision);
       if (!draft) return { status: 'unavailable' };
-      if (draft.itemVersion !== expectedItemVersion || draft.editVersion !== expectedEditVersion) {
-        return { status: 'stale', itemVersion: draft.itemVersion, editVersion: draft.editVersion };
-      }
-      if (revision === item.published_rev || Boolean(draft.sealedAt) !== (mode === 'rollback')) return { status: 'conflict' };
-      if (draft.missingLocales.length) return { status: 'invalid' };
+      const decision = planCatalogPublication('publisher', draft, input, new Date());
+      if (decision.status !== 'allowed') return decision;
       if (!await reserveCommand(client, actor, command)) return { status: 'conflict' };
       await client.query(`INSERT INTO ck.catalog_review (review_id,item_id,rev,edit_version,organization_id,reviewer_id,decision)
-        VALUES ($1,$2,$3,$4,$5,$6,'approved')`,
-        [randomUUID(), itemId, revision, expectedEditVersion, actor.organizationId, actor.principalId]);
+        VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [randomUUID(), itemId, revision, decision.review.editVersion, actor.organizationId, actor.principalId, decision.review.decision]);
       const version = await publishLocalizedRevision(client, { itemId, revision, itemVersion: expectedItemVersion, editVersion: expectedEditVersion });
       await recordAudit(client, actor, { actorKind: 'staff', kind: 'catalog', action: command.command, resourceId: itemId, operationId,
         before: item.published_rev, after: revision });
