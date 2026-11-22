@@ -29,9 +29,11 @@ export function previewWorkspaceImport(text: string): PaletteDocument {
 
 export function localWorkspace(storage: Storage, initial: PaletteDocument, options: {
   now: () => number; newId: () => string;
+  saved?: Readonly<{ storedRevision: number; editRevision: number }>;
 }) {
   let navigation = 0;
-  let active = { token: 0, session: openPaletteSession(initial), storedRevision: null as number | null, savedEdit: null as number | null };
+  let active = { token: 0, session: openPaletteSession(initial), storedRevision: options.saved?.storedRevision ?? null,
+    savedEdit: options.saved?.editRevision ?? null };
   let deleted: { snapshot: DeletedDocument; token: number; savedEdit: number | null } | null = null;
   const dirty = () => active.savedEdit !== active.session.document.revision;
   const allowReplacement = (discard: boolean) => {
@@ -63,8 +65,21 @@ export function localWorkspace(storage: Storage, initial: PaletteDocument, optio
   }
   return {
     current: () => active.session,
+    savedVersion: () => active.storedRevision === null || active.savedEdit === null ? undefined :
+      { storedRevision: active.storedRevision, editRevision: active.savedEdit },
     dirty,
     edit,
+    rename(input: string, expectedRevision: number) {
+      const { document } = active.session;
+      if (document.revision !== expectedRevision) throw new WorkspaceError('stale', 'Refresh before renaming the palette.');
+      const name = input.trim();
+      if (name === document.name) return;
+      const updatedAt = options.now();
+      if (!name || name.length > 120 || !Number.isSafeInteger(updatedAt) || updatedAt < 0 ||
+          document.revision >= Number.MAX_SAFE_INTEGER) throw new RangeError('Enter a valid palette name.');
+      active = { ...active, session: { ...active.session, document: { ...document, name,
+        revision: document.revision + 1, updatedAt: Math.max(document.updatedAt, updatedAt) } } };
+    },
     handoff: () => structuredClone(active.session.document),
     preview: (template: Template, variant: PreviewVariant) => composePreview(template, variant, active.session.document.palette),
     contrast(pair: Pair) {
