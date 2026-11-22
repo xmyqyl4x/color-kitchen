@@ -39,3 +39,15 @@ jobs:
       - run: npm test
         env:
           COLOR_KITCHEN_TEST_DATABASE_URL: postgresql://ck_dev:ck_dev_local@127.0.0.1:${{ job.services.postgres.ports[5432] }}/color_kitchen_test
+      - name: Rehearse migration and restore
+        run: node dist/tests/rehearse-release.js > "$RUNNER_TEMP/release-rehearsal.json"
+        env:
+          COLOR_KITCHEN_TEST_DATABASE_URL: postgresql://ck_dev:ck_dev_local@127.0.0.1:${{ job.services.postgres.ports[5432] }}/color_kitchen_test
+          COLOR_KITCHEN_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
+      - name: Upload disposable rehearsal evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-rehearsal
+          path: ${{ runner.temp }}/release-rehearsal.json
+          if-no-files-found: error
+          retention-days: 14

@@ -15,6 +15,8 @@ Number new SQL files under `db/migrations/` in ascending order. Leave applied fi
 
 Use the owning team's backup and selective recovery process for shared data.
 
+The [release rehearsal](release-rehearsal.md) exercises an upgrade, a separate restore and localized HTTP reads in the disposable fixture. Its staging gate tracks shared-platform evidence separately.
+
 ## Catalog fixtures
 
 After migrations, run `npm run db:seed` with the development connection to load the five localized catalog examples. Replaying the same seed keeps the published revision and count stable. A deliberate source edit uses a new revision. The font is the unmodified Regular WOFF2 from the [Adobe Source Sans 3 3.052R release](https://github.com/adobe-fonts/source-sans/releases/tag/3.052R). The importer verifies the original font checksum and [license notice](../catalog/fonts/SourceSans3-OFL.txt).

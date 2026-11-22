@@ -9,6 +9,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/src/http/cli.js",
+    "release:rehearse": "npm run build --silent && node dist/tests/rehearse-release.js",
+    "release:gate": "npm run build --silent && node dist/src/release/gate-cli.js",
     "typecheck": "tsc --noEmit",
     "db:migrate": "npm run build --silent && node dist/src/db/cli.js",
     "db:seed": "npm run build --silent && node dist/src/catalog/seed-cli.js",
