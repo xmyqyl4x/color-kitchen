@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import { parseColor } from '../src/color/parse.js';
 import { searchConnectorCatalog, readConnectorPublicTheme, readConnectorProjectTheme } from '../src/connector/repository.js';
+import { readConnector } from '../src/connector/projections.js';
 import { extensionRepository, extensionStateKey } from '../src/extension/repository.js';
 import { changeThemeRelease, createProject, listThemeAssets, saveThemeRevision } from '../src/projects/repository.js';
 import { themeRoleKeys } from '../src/projects/snapshot.js';
@@ -54,6 +55,9 @@ test('connector reads bind exact grant, client, membership, project and current 
     const permitted = (await access())!;
     assert.deepEqual(permitted.payload, snapshot);
     assert.deepEqual(Object.keys(permitted).sort(), ['digest','payload','releaseId','revision','schemaVersion']);
+    const projected = await readConnector(client, { operation: 'theme.project', ...target }, reader);
+    assert(projected.status === 'ok' && projected.operation === 'theme.project');
+    assert.equal(projected.data.releaseId, scopedRelease);
     assert.equal(await access({ ...reader, clientId: 'other-client' }), null);
     assert.equal(await access({ ...reader, scopes: [] }), null);
     assert.equal(await access(reader, { ...target, projectId: unselectedProject }), null);
@@ -65,6 +69,7 @@ test('connector reads bind exact grant, client, membership, project and current 
     assert((await readConnectorPublicTheme(client, publicRelease))?.payload);
     await client.query('UPDATE ck.project_member SET inactive_at=now() WHERE project_id=$1 AND principal_id=$2', [projectId, readerId]);
     assert.equal(await access(), null);
+    assert.deepEqual(await readConnector(client, { operation: 'theme.project', ...target }, reader), { status: 'unavailable' });
     await client.query('UPDATE ck.project_member SET inactive_at=NULL WHERE project_id=$1 AND principal_id=$2', [projectId, readerId]);
     await client.query('UPDATE ck.connector_grant SET revoked_at=now() WHERE grant_id=$1', [grantId]);
     assert.equal(await access(), null);
