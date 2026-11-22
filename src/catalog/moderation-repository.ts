@@ -76,14 +76,26 @@ export async function createCatalogDraft(client: ClientBase, actor: StoredActor,
 }
 
 export async function forkCatalogDraft(client: ClientBase, actor: StoredActor, itemId: string, sourceRevision: number) {
+  const result = await forkCatalogDraftIfCurrent(client, actor, itemId, sourceRevision);
+  return result.status === 'created' ? result.draft : null;
+}
+
+export function forkCatalogDraftIfCurrent(client: ClientBase, actor: StoredActor, itemId: string, sourceRevision: number,
+  expectedEditVersion?: string) {
   return inTransaction(client, async () => {
-    if (!await lockStaff(client, actor, 'editor') || !await lockItem(client, itemId)) return null;
+    if (!await lockStaff(client, actor, 'editor') || !await lockItem(client, itemId)) return { status: 'unavailable' } as const;
+    if (expectedEditVersion !== undefined) {
+      const { rows: [source] } = await client.query<{ edit_version: string }>(
+        'SELECT edit_version FROM ck.catalog_revision WHERE item_id=$1 AND rev=$2', [itemId, sourceRevision]);
+      if (!source) return { status: 'unavailable' } as const;
+      if (source.edit_version !== expectedEditVersion) return { status: 'stale', editVersion: source.edit_version } as const;
+    }
     const { rows: [copy] } = await client.query<{ rev: number }>(`INSERT INTO ck.catalog_revision
       (item_id,rev,schema_version,payload,origin,source_uri,source_version,source_digest,license_id,license_uri,attribution,effective_at)
       SELECT item_id,(SELECT max(rev)+1 FROM ck.catalog_revision WHERE item_id=$1),schema_version,payload,origin,source_uri,
         source_version,source_digest,license_id,license_uri,attribution,effective_at
       FROM ck.catalog_revision WHERE item_id=$1 AND rev=$2 RETURNING rev`, [itemId, sourceRevision]);
-    if (!copy) return null;
+    if (!copy) return { status: 'unavailable' } as const;
     await client.query(`INSERT INTO ck.catalog_text (item_id,rev,locale,title,summary,body)
       SELECT item_id,$3,locale,title,summary,body FROM ck.catalog_text WHERE item_id=$1 AND rev=$2`, [itemId, sourceRevision, copy.rev]);
     await client.query(`INSERT INTO ck.catalog_translation_source (item_id,rev,locale,source_digest)
@@ -92,7 +104,7 @@ export async function forkCatalogDraft(client: ClientBase, actor: StoredActor, i
       WHERE t.item_id=$1 AND t.rev=$2 AND t.locale<>'en'`, [itemId, sourceRevision, copy.rev]);
     await client.query(`INSERT INTO ck.catalog_revision_tag (item_id,rev,tag_id)
       SELECT item_id,$3,tag_id FROM ck.catalog_revision_tag WHERE item_id=$1 AND rev=$2`, [itemId, sourceRevision, copy.rev]);
-    return readCatalogDraft(client, actor, itemId, copy.rev);
+    return { status: 'created', draft: (await readCatalogDraft(client, actor, itemId, copy.rev))! } as const;
   });
 }
 
@@ -188,7 +200,8 @@ export async function listCatalogAudit(client: ClientBase, actor: StoredActor, o
   const limit = options.limit ?? 20;
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new RangeError('Invalid audit limit.');
   const { rows } = await client.query<AuditEntry>(`SELECT event_id AS "eventId",resource_id AS "itemId",action,
-    occurred_at::text AS "occurredAt",before_rev AS "previousRevision",after_rev AS revision,
+    to_char(occurred_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "occurredAt",
+    before_rev AS "previousRevision",after_rev AS revision,
     actor_id AS "principalId",organization_id AS "organizationId" FROM ck.audit_event
     WHERE resource_kind='catalog' AND actor_kind='staff' AND ($1::uuid IS NULL OR resource_id=$1)
       AND ($2::text IS NULL OR action=$2) AND ($3::timestamptz IS NULL OR (occurred_at,event_id)<($3,$4::uuid))

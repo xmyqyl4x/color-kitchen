@@ -2,7 +2,7 @@ import type { ClientBase } from 'pg';
 import { valueDigest, type StoredActor } from '../db/command-receipts.js';
 import { locales } from '../model/locales.js';
 import { deliverCatalogInvalidation, revalidateCatalog, type CatalogInvalidator } from './invalidation.js';
-import { catalogStaffRoles, createCatalogDraft, forkCatalogDraft, listCatalogAudit, publishStaffCatalog, readCatalogDraft,
+import { catalogStaffRoles, createCatalogDraft, forkCatalogDraft, forkCatalogDraftIfCurrent, listCatalogAudit, publishStaffCatalog, readCatalogDraft,
   saveCatalogMetadata, saveCatalogTranslation, type DraftEdit, type Metadata, type Publication, type Translation } from './moderation-repository.js';
 import { planCatalogPublication } from './publication-rules.js';
 import type { CatalogKind } from './repository.js';
@@ -33,6 +33,7 @@ export function catalogModeration(client: ClientBase, actor: StoredActor, invali
     draft,
     create: (item: Parameters<typeof createCatalogDraft>[2], metadata: Metadata) => createCatalogDraft(client, actor, item, metadata),
     fork: (itemId: string, revision: number) => forkCatalogDraft(client, actor, itemId, revision),
+    forkIfCurrent: (itemId: string, revision: number, expected: string) => forkCatalogDraftIfCurrent(client, actor, itemId, revision, expected),
     translate: (input: DraftEdit & Translation) => saveCatalogTranslation(client, actor, input),
     updateMetadata: (input: DraftEdit, metadata: Metadata) => saveCatalogMetadata(client, actor, input, metadata),
     async compare(itemId: string, baseRevision: number, targetRevision: number) {
