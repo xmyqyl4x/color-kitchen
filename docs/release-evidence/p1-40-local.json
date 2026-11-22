@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "target": "local-docker-staging",
+  "origin": "https://127.0.0.1:58317",
+  "candidate": {
+    "image": "sha256:d7ca7f067035c7f230fedb16169624962673f1f649dbf0a4f55f61fee03dca2d",
+    "commit": "7de84318e1577bae22cdc8a17dc279e38ec06323"
+  },
+  "previous": {
+    "image": "sha256:d1df77af5615fc50f03af99ce5d556ef1e49c516d661349bb213c2f8cc7e66a5",
+    "commit": "42c2ff55dd2ff21527f586f774b1fc6a84cc4bb7"
+  },
+  "database": {
+    "alias": "ck_stage_6",
+    "restoredAlias": "ck_stage_restore_6",
+    "migrationOwner": "ck_stage_migrator",
+    "version": "18.6 (Debian 18.6-1.pgdg13+2)",
+    "baselineHead": "0003",
+    "head": "0004",
+    "digest": "sha256:94c1fffacffe00e0653d0eefb076937baf60a2aead7067a79483a18b702a32a4",
+    "schema": [
+      "catalog_item",
+      "catalog_revision",
+      "catalog_revision_tag",
+      "catalog_text",
+      "contact_request",
+      "published_catalog",
+      "tag",
+      "tag_text",
+      "usage_day",
+      "usage_receipt"
+    ],
+    "rights": {
+      "role": "ck_stage_runtime",
+      "schema": true,
+      "ddl": false,
+      "catalog_read": true,
+      "catalog_write": false,
+      "ledger": false,
+      "intake": true
+    },
+    "reuse": "Color Kitchen-owned catalog, operations, and migration ledger in the dedicated local PostgreSQL volume"
+  },
+  "content": {
+    "digest": "sha256:213d1737341db867d0beb26fbfb5016fa85d051de1125d44b370c38c04cf53e1",
+    "locales": [
+      "en",
+      "fr",
+      "es",
+      "pt",
+      "de"
+    ]
+  },
+  "browser": {
+    "locales": [
+      "en",
+      "fr",
+      "es",
+      "pt",
+      "de"
+    ],
+    "privateRoutes": [
+      "collection",
+      "image-to-palette",
+      "moodboard",
+      "design-preview",
+      "type-playground",
+      "color-guide",
+      "contact",
+      "advertise"
+    ],
+    "nonLocalPrivateRequests": 0,
+    "viewport320": "pass",
+    "zoomPercent": 400,
+    "atZoom": {
+      "viewport": 320,
+      "overflow": false,
+      "ratio": 4
+    },
+    "accessibility": "Chromium accessibility tree and keyboard navigation",
+    "exports": "Downloaded palette backup and PDF parsed independently",
+    "noFillMs": 1175,
+    "noFillLayoutStable": true,
+    "adWithoutReferrer": true,
+    "inquiryDelivered": true,
+    "providerScope": "local TLS fixtures"
+  },
+  "rollback": {
+    "previousImageServedOnUpgradedDatabase": true,
+    "isolatedArchiveRestored": true,
+    "restoredLocalizedHttpReads": true,
+    "restoredUpgradeReplayed": true,
+    "archiveDigest": "sha256:fc9c7baf85655189d5ac090786005cf54e34c2d863a24d1085b60180fb7cdefc",
+    "trafficRollbackMs": 221,
+    "restoreAndReplayMs": 2490
+  },
+  "elapsedMs": 16894
+}

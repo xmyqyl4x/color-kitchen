@@ -51,3 +51,39 @@ jobs:
           path: ${{ runner.temp }}/release-rehearsal.json
           if-no-files-found: error
           retention-days: 14
+      - name: Build and smoke-test the release image
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          image=color-kitchen:verify
+          web="ck-release-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          trap 'docker rm -f "$web" >/dev/null 2>&1 || true' EXIT
+          docker build --build-arg "REVISION=$GITHUB_SHA" --tag "$image" .
+          docker exec "$POSTGRES_CONTAINER" createdb -U ck_dev ck_ci_release
+          database=postgresql://ck_dev:ck_dev_local@127.0.0.1:5432/ck_ci_release
+          docker run --rm --network "container:$POSTGRES_CONTAINER" -e "DATABASE_URL=$database" "$image" node dist/src/db/cli.js
+          docker run --rm --network "container:$POSTGRES_CONTAINER" -e "DATABASE_URL=$database" "$image" node dist/src/catalog/seed-cli.js
+          docker run --detach --name "$web" --network "container:$POSTGRES_CONTAINER" -e "DATABASE_URL=$database" "$image"
+          for attempt in {1..25}; do
+            status=$(docker inspect "$web" --format '{{.State.Health.Status}}')
+            if [ "$status" = healthy ]; then break; fi
+            sleep 1
+          done
+          test "$status" = healthy
+          docker exec -i "$web" node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          for (const locale of ['en', 'fr', 'es', 'pt', 'de']) {
+            const origin = 'http://127.0.0.1:3000';
+            const home = await fetch(origin + '/' + locale);
+            assert.equal(home.status, 200);
+            assert.equal(home.headers.get('content-language'), locale);
+            assert.match(await home.text(), new RegExp('<html lang="' + locale + '"'));
+            const detail = await fetch(origin + '/api/v1/catalog/palette/forest-study?locale=' + locale);
+            assert.equal(detail.status, 200);
+            assert.equal((await detail.json()).data.entry.revision, 1);
+          }
+          for (const asset of ['/assets/kitchen.css', '/assets/source-sans.woff2', '/vendor/pdf-lib.js', '/src/web/studio-client.js']) {
+            assert.equal((await fetch('http://127.0.0.1:3000' + asset, { method: 'HEAD' })).status, 200, asset);
+          }
+          JS

@@ -91,7 +91,9 @@ test('HTTP Guide rejects private fields and bounds the body, then maps timeout a
     } });
     const streaming: RequestInit & { duplex: 'half' } = { method: 'POST', duplex: 'half',
       headers: { 'Content-Type': 'application/json' }, body: stream };
-    assert.equal((await fetch(origin + guidePath, streaming)).status, 413);
+    const oversizedStream = await fetch(origin + guidePath, streaming);
+    assert.equal(oversizedStream.status, 413);
+    assert.equal((await oversizedStream.json()).error.code, 'body_too_large');
     const crossOrigin = await post(JSON.stringify(base), { 'Content-Type': 'application/json', Origin: 'https://elsewhere.example' });
     assert.equal(crossOrigin.status, 403);
     assert.equal(calls, 0);
