@@ -25,7 +25,7 @@ export type CatalogEntry = Readonly<{
   attribution: string | null;
 }>;
 
-const projection = `
+export const catalogProjection = `
   item_id AS "itemId", kind, slug, rev AS revision, schema_version AS "schemaVersion",
   locale, title, summary, body, effective_at AS "effectiveAt", payload, origin,
   source_uri AS "sourceUri", source_version AS "sourceVersion", source_digest AS "sourceDigest",
@@ -42,7 +42,7 @@ export async function getCatalogEntry(client: ClientBase, kind: CatalogKind, slu
   validateKindAndLocale(kind, locale);
   if (slug.length > 100 || !slugPattern.test(slug)) throw new RangeError('Invalid catalog slug.');
   const { rows } = await client.query<CatalogEntry>(
-    `SELECT ${projection} FROM ck.published_catalog WHERE kind = $1 AND slug = $2 AND locale = $3`,
+    `SELECT ${catalogProjection} FROM ck.published_catalog WHERE kind = $1 AND slug = $2 AND locale = $3`,
     [kind, slug, locale],
   );
   return rows[0] ?? null;
@@ -52,7 +52,7 @@ export async function getCatalogRelease(client: ClientBase, kind: CatalogKind, s
   validateKindAndLocale(kind, 'en');
   if (slug.length > 100 || !slugPattern.test(slug)) throw new RangeError('Invalid catalog slug.');
   const { rows } = await client.query<CatalogEntry>(
-    `SELECT ${projection} FROM ck.published_catalog WHERE kind = $1 AND slug = $2`,
+    `SELECT ${catalogProjection} FROM ck.published_catalog WHERE kind = $1 AND slug = $2`,
     [kind, slug],
   );
   const head = rows[0];
@@ -97,7 +97,7 @@ export async function listCatalog(client: ClientBase, options: {
   const cursor = options.cursor === undefined ? undefined : decodeCursor(options.cursor, { kind, locale, query });
   const prefix = query.replace(/[\\%_]/g, value => '\\' + value) + '%';
   const { rows } = await client.query<CatalogEntry & { rank: number }>(`
-    SELECT ${projection}, COALESCE(featured_rank, 2147483647) AS rank
+    SELECT ${catalogProjection}, COALESCE(featured_rank, 2147483647) AS rank
       FROM ck.published_catalog
       WHERE kind = $1 AND locale = $2
         AND ($3 = '' OR title ILIKE $4 OR slug ILIKE $4 OR lower(payload->>'hex') = lower($3))
