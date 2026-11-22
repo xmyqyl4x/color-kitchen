@@ -9,7 +9,7 @@ export type ProjectActor = StoredActor;
 export type ProjectRole = 'owner' | 'editor' | 'viewer';
 type Asset = { assetId: string; name: string; headRevision: number | null; version: string };
 type Revision = { revision: number; schemaVersion: number; payload: ThemeSnapshot; digest: string };
-type Release = Revision & { releaseId: string };
+export type ReleasedTheme = Revision & { releaseId: string };
 type ReleaseResult = { status: 'released' | 'withdrawn'; version: string; releaseId: string };
 type Failure = { status: 'unavailable' | 'conflict' | 'invalid' | 'expired' } | { status: 'stale'; version: string };
 
@@ -185,7 +185,7 @@ export async function changeThemeRelease(client: ClientBase, actor: ProjectActor
 }
 
 export async function readPublicThemeRelease(client: ClientBase, releaseId: string) {
-  const { rows: [release] } = await client.query<Release>(
+  const { rows: [release] } = await client.query<ReleasedTheme>(
     `SELECT l.release_id AS "releaseId",${revisionColumns} FROM ck.asset_release l
      JOIN ck.asset_revision r USING (organization_id,project_id,asset_id,rev)
      JOIN ck.asset a USING (organization_id,project_id,asset_id) JOIN ck.project p USING (organization_id,project_id)
