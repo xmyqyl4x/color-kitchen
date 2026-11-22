@@ -9,5 +9,6 @@
 | Playwright | 1.62.1 | Chromium browser integration tests, Apache-2.0 | Application team. Verify fresh, upgraded and blocked IndexedDB databases in CI. |
 | FormatJS | ICU parser 3.5.23, IntlMessageFormat 12.2.0 | Locale-aware message parsing, placeholder validation and formatting, BSD-3-Clause | Application team. Verify five-locale parity and rendering in CI. |
 | Tailwind CSS reference targets | 3.4.19 and 4.3.5 | Export compilation fixtures and pinned color references, MIT | Application team. Rebuild references with `node scripts/generate-tailwind-colors.mjs` after updating the pins. |
+| Vercel AI SDK | 7.0.179 | Configurable structured Color Guide provider adapter, Apache-2.0 | Application team. Verify the adapter with the SDK mock model and choose a deployment provider during hosted integration. |
 
 The Node version file and npm lockfile record the installed toolchain. Update the register when an adopted component or tested compatibility baseline changes.

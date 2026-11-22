@@ -21,6 +21,7 @@ export type PaletteCommand =
   | { type: 'move'; id: string; index: number }
   | { type: 'remove'; id: string; roles?: Readonly<Record<string, string | null>> }
   | { type: 'assign-role'; role: string; id: string | null }
+  | { type: 'apply-suggestion'; changes: readonly Readonly<{ id: string; color: ColorValue }>[]; roles?: Readonly<Record<string, string>> }
   | { type: 'undo' }
   | { type: 'redo' };
 
@@ -108,6 +109,20 @@ type Edit = Exclude<PaletteCommand, { type: 'undo' } | { type: 'redo' }>;
 
 export function previewPaletteEdit(palette: Palette, command: Edit): Palette {
   switch (command.type) {
+    case 'apply-suggestion': {
+      if (!command.changes.length || command.changes.length > maxSwatches ||
+          new Set(command.changes.map(change => change.id)).size !== command.changes.length) {
+        throw new RangeError('A suggestion needs distinct target swatches.');
+      }
+      let next = palette;
+      for (const change of command.changes) {
+        next = previewPaletteEdit(next, { type: 'set-color', id: change.id, color: change.color });
+      }
+      for (const [role, id] of Object.entries(command.roles ?? {})) {
+        next = previewPaletteEdit(next, { type: 'assign-role', role, id });
+      }
+      return next;
+    }
     case 'generate': {
       const candidates = generateColors(palette.swatches.length, command.options);
       return withColors(palette, (_, index) => candidates[index]!);
