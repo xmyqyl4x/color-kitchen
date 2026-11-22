@@ -54,7 +54,7 @@ const operations = operationsHttp({
     retentionMs: contactDays * 86_400_000 },
   consentKey: secret('COLOR_KITCHEN_CONSENT_KEY'), eventKey: secret('COLOR_KITCHEN_EVENT_KEY'),
 });
-const web = webHttp({ withClient });
+const web = webHttp({ withClient, measurement });
 const server = httpServer(async request => {
   const { pathname } = new URL(request.url);
   if (pathname === guidePath) return guide(request);

@@ -33,7 +33,7 @@ type FontSeed = Readonly<{
 export type CatalogSeed = CommonSeed & (
   | Readonly<{ kind: 'palette'; colors: readonly string[] }>
   | Readonly<{ kind: 'gradient'; angle: number; stops: readonly Readonly<{ position: number; hex: string }>[] }>
-  | Readonly<{ kind: 'color'; hex: string; keyword: string; sourceUri: string }>
+  | Readonly<{ kind: 'color'; hex: string; keyword: string; aliases?: readonly string[]; sourceUri: string }>
   | FontSeed
 );
 
@@ -80,6 +80,12 @@ async function prepare(entry: CatalogSeed) {
       sourceUri = entry.sourceUri;
       attribution = 'CSS Color Module Level 4, W3C';
       payload = { color: hexColor(entry.hex), hex: entry.hex.toUpperCase(), keyword: entry.keyword };
+      if (entry.aliases?.length) {
+        if (entry.aliases.length > 12 || entry.aliases.some(alias => !/^[a-z]{2,30}$/.test(alias))) {
+          throw new RangeError('Invalid CSS keyword alias.');
+        }
+        payload.aliases = [...new Set(entry.aliases)];
+      }
       break;
     case 'font': {
       if (entry.licenseId !== 'OFL-1.1' || !entry.attribution.trim() || !entry.sourceVersion.trim() ||

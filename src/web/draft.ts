@@ -1,7 +1,9 @@
-import type { PaletteDocument } from '../browser/document.js';
+import type { GradientDocument, PaletteDocument } from '../browser/document.js';
+import { validateGradient } from '../gradient/gradient.js';
 import { previewWorkspaceImport } from '../workspace/workspace.js';
 
 const storageKey = 'ck-active-palette';
+const gradientKey = 'ck-active-gradient';
 type Saved = Readonly<{ storedRevision: number; editRevision: number }>;
 
 export function readActiveDraft() {
@@ -24,6 +26,25 @@ export function readActivePalette() {
 export function storeActivePalette(document: PaletteDocument, saved?: Saved) {
   try {
     sessionStorage.setItem(storageKey, JSON.stringify(saved ? { document, saved } : document));
+    return true;
+  } catch { return false; }
+}
+
+export function readGradientDraft(): GradientDocument | null {
+  try {
+    const text = sessionStorage.getItem(gradientKey);
+    if (!text) return null;
+    const document = JSON.parse(text) as GradientDocument;
+    if (document.kind !== 'gradient' || document.schemaVersion !== 1) return null;
+    validateGradient(document);
+    return document;
+  } catch { return null; }
+}
+
+export function storeGradientDraft(document: GradientDocument) {
+  try {
+    validateGradient(document);
+    sessionStorage.setItem(gradientKey, JSON.stringify(document));
     return true;
   } catch { return false; }
 }
