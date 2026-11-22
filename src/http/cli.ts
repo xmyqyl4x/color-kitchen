@@ -63,7 +63,7 @@ const operations = operationsHttp({
   withClient, measurement, contact,
   consentKey: secret('COLOR_KITCHEN_CONSENT_KEY'), eventKey: secret('COLOR_KITCHEN_EVENT_KEY'),
 });
-const web = webHttp({ withClient, measurement, adFrameUrl: process.env.COLOR_KITCHEN_AD_FRAME_URL });
+const web = webHttp({ withClient, measurement, verifyIdentity, adFrameUrl: process.env.COLOR_KITCHEN_AD_FRAME_URL });
 const delivery = process.env.COLOR_KITCHEN_INQUIRY_WEBHOOK;
 const deliver = delivery && contact ? inquiryWebhook({ url: delivery, token: process.env.COLOR_KITCHEN_INQUIRY_TOKEN ?? '',
   deduplicationMs: Number(process.env.COLOR_KITCHEN_INQUIRY_DEDUP_MS ?? 0) }) : undefined;

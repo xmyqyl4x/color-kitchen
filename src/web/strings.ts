@@ -6,7 +6,7 @@ export const createRoutes = ['palette-studio', 'image-to-palette', 'contrast', '
   'gradient-studio', 'gradient-steps', 'moodboard', 'tailwind', 'type-playground', 'color-guide'] as const;
 export const exploreRoutes = ['palettes', 'colors', 'gradients', 'fonts'] as const;
 export const helpRoutes = ['licensing', 'terms', 'privacy', 'cookies', 'cookie-preferences', 'advertise', 'contact'] as const;
-export const screenRoutes = ['', ...createRoutes, ...exploreRoutes, 'browser-companion', 'collection', ...helpRoutes] as const;
+export const screenRoutes = ['', ...createRoutes, ...exploreRoutes, 'browser-companion', 'collection', 'catalog-admin', ...helpRoutes] as const;
 export type Screen = typeof screenRoutes[number];
 
 const translations = {
@@ -67,6 +67,7 @@ const translations = {
   fonts: ['Font Library', 'Bibliothèque de polices', 'Biblioteca de fuentes', 'Biblioteca de fontes', 'Schriftbibliothek'],
   'browser-companion': ['Browser Companion', 'Assistant de navigateur', 'Asistente del navegador', 'Assistente do navegador', 'Browser-Begleiter'],
   collection: ['My Collection', 'Ma collection', 'Mi colección', 'A minha coleção', 'Meine Sammlung'],
+  'catalog-admin': ['Catalog administration', 'Administration du catalogue', 'Administración del catálogo', 'Administração do catálogo', 'Katalogverwaltung'],
   licensing: ['Usage and Licensing', 'Utilisation et licences', 'Uso y licencias', 'Uso e licenciamento', 'Nutzung und Lizenzen'],
   terms: ['Terms of Use', 'Conditions d’utilisation', 'Condiciones de uso', 'Termos de utilização', 'Nutzungsbedingungen'],
   privacy: ['Privacy Notice', 'Avis de confidentialité', 'Aviso de privacidad', 'Aviso de privacidade', 'Datenschutzhinweis'],
