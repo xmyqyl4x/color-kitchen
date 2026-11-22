@@ -4,8 +4,8 @@ import { apiError } from './response.js';
 
 export type HttpHandler = (request: Request) => Response | Promise<Response>;
 
-export function httpServer(handler: HttpHandler, origin = 'http://localhost') {
-  const serverOrigin = new URL(origin).origin;
+export function httpServer(handler: HttpHandler, origin?: string) {
+  const serverOrigin = origin ? new URL(origin).origin : undefined;
   return createServer({ requestTimeout: 15_000, headersTimeout: 10_000 }, async (incoming, outgoing) => {
     const method = incoming.method ?? 'GET';
     const cancellation = new AbortController();
@@ -24,7 +24,8 @@ export function httpServer(handler: HttpHandler, origin = 'http://localhost') {
           init.body = Readable.toWeb(incoming) as ReadableStream<Uint8Array>;
           init.duplex = 'half';
         }
-        response = await handler(new Request(serverOrigin + incoming.url, init));
+        const requestOrigin = serverOrigin ?? 'http://127.0.0.1:' + incoming.socket.localPort;
+        response = await handler(new Request(requestOrigin + incoming.url, init));
       }
     } catch {
       response = apiError(500, 'internal_error');
