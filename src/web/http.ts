@@ -7,6 +7,7 @@ import { isLocale, type Locale } from '../model/locales.js';
 import { homeScreen, html, pathFor, renderShell } from './shell.js';
 import { screenRoutes, screenTitle, webText, type Screen } from './strings.js';
 import { paletteStudio } from './studio.js';
+import { collectionScreen } from './collection.js';
 
 const knownScreens = new Set<string>(screenRoutes);
 const listings = { palettes: 'palette', colors: 'color', gradients: 'gradient', fonts: 'font' } as const;
@@ -17,7 +18,7 @@ const fileRoutes: Record<string, [string, string]> = {
   '/assets/source-sans-license.txt': ['../../../catalog/fonts/SourceSans3-OFL.txt', 'text/plain; charset=utf-8'],
   '/vendor/pdf-lib.js': ['../../../node_modules/pdf-lib/dist/pdf-lib.esm.min.js', 'text/javascript; charset=utf-8'],
 };
-const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/messages|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text))\.js$/;
+const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/messages|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text|ui|collection-client|collection-text|export-drawer))\.js$/;
 
 async function webFile(request: Request, path: string) {
   const asset = Object.hasOwn(fileRoutes, path) ? fileRoutes[path] : undefined;
@@ -85,6 +86,8 @@ export function webHttp(dependencies: CatalogHttpDependencies) {
     if (!screen && !entry) return renderShell(request, { ...base, content: homeScreen(locale), index: true });
     if (screen === 'palette-studio' && !entry) return renderShell(request, { ...base, content: paletteStudio(locale),
       index: true, module: '/src/web/studio-client.js' });
+    if (screen === 'collection' && !entry) return renderShell(request, { ...base, content: collectionScreen(locale),
+      module: '/src/web/collection-client.js' });
     const kind = Object.hasOwn(listings, screen) ? listings[screen as keyof typeof listings] : undefined;
     try {
       if (kind) {

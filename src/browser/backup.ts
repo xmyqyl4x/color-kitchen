@@ -30,7 +30,11 @@ function validMetadata(record: { id: unknown; name: unknown; revision: number })
 
 function documentRecord(document: CreativeDocument) {
   if (!validMetadata(document) || document.schemaVersion !== 1 ||
-      !Number.isSafeInteger(document.updatedAt) || document.updatedAt < 0) throw new RangeError('Invalid document metadata.');
+      !Number.isSafeInteger(document.updatedAt) || document.updatedAt < 0 ||
+      (document.tags !== undefined && (!Array.isArray(document.tags) || document.tags.length > 12 ||
+        document.tags.some(tag => typeof tag !== 'string' || !tag.trim() || tag.length > 32)))) {
+    throw new RangeError('Invalid document metadata.');
+  }
   switch (document.kind) {
     case 'palette': return openPaletteSession(document).document;
     case 'gradient': validateGradient(document); return document;
