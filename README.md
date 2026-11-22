@@ -8,6 +8,18 @@ Install the integration browser using `npx playwright install chromium`. To use 
 
 Run `npm run db:migrate` with `DATABASE_URL` set to an intended development database. The command reports the verified schema head and migrations applied. See the [database runbook](docs/database.md) and [technology register](docs/technology.md).
 
+## Export fidelity
+
+| Format | Transparency | Color and fallback |
+| --- | --- | --- |
+| PNG | Preserved at 8-bit precision | sRGB |
+| JPEG | Choose an opaque backing for translucent content | Lossy sRGB. Encoding requires browser support. |
+| SVG swatches and eligible gradients | Preserved | sRGB. Conic and unsupported interpolation use the offered PNG fallback. |
+| PDF swatches and moodboards | Preserved | sRGB vectors for swatches and raster art for moodboards. Board page size follows the chosen print resolution. |
+| Adobe Swatch Exchange | Choose an opaque backing for translucent swatches | sRGB with float32 channels. CSS companions retain source values and role bindings. |
+
+Type Playground image exports use a loaded font or an explicitly chosen system fallback. Use CSS to retain custom variation axes outside the browser canvas capabilities. The text companion retains the original Unicode.
+
 ## Design package
 
 Color Kitchen is designed as a multilingual public color workspace and a developer platform for publishing game themes. The repository contains the design, delivery plan, mockups and an interactive browser prototype.

@@ -162,5 +162,5 @@ export function gradientSvg(gradient: Gradient, bounds: GradientBounds) {
     const percent = color.components.map(value => `${value * 100}%`).join(', ');
     return `<stop offset="${position}" stop-color="rgb(${percent})" stop-opacity="${color.alpha}"/>`;
   });
-  return { format: 'svg', svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><defs><${tag} id="gradient" gradientUnits="userSpaceOnUse" color-interpolation="sRGB" ${parameters}>${elements.join('')}</${tag}></defs><rect width="${width}" height="${height}" fill="url(#gradient)"/></svg>` } as const;
+  return { format: 'svg', svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><defs><${tag} id="gradient" gradientUnits="userSpaceOnUse" color-interpolation="sRGB" ${parameters}>${elements.join('')}</${tag}></defs><rect width="${width}" height="${height}" fill="url(#gradient)"/></svg>` } as const;
 }
