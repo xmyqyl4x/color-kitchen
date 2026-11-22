@@ -3,6 +3,11 @@ import type { Collection, CreativeDocument, StoredAsset, StoredPreference } from
 
 type StoreName = typeof stores[keyof typeof stores];
 type StoredCollection = Omit<Collection, 'revision'> & { revision?: number };
+export type DeletedDocument = Readonly<{
+  document: CreativeDocument;
+  assets: readonly StoredAsset[];
+  collections: readonly StoredCollection[];
+}>;
 
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -65,6 +70,14 @@ function checkExpected(actual: number | undefined, expected: number | null) {
 
 function assetIds(document: CreativeDocument | undefined): readonly string[] {
   return document?.kind === 'board' ? document.assetIds : [];
+}
+
+async function requireAssets(store: IDBObjectStore, ids: readonly string[]) {
+  for (const id of ids) {
+    if (await requestResult(store.getKey(id)) === undefined) {
+      throw new WorkspaceStorageError('invalid', 'A referenced board image is unavailable.');
+    }
+  }
 }
 
 async function removeOrphanedAssets(transaction: IDBTransaction, ids: readonly string[]) {
@@ -132,11 +145,7 @@ export function workspaceRepository(database: IDBDatabase) {
           throw new WorkspaceStorageError('conflict', 'Save a different kind of document as a new item.');
         }
         for (const asset of newAssets) await requestResult(assets.add(asset));
-        for (const id of referenced) {
-          if (await requestResult(assets.getKey(id)) === undefined) {
-            throw new WorkspaceStorageError('invalid', 'A referenced board image is unavailable.');
-          }
-        }
+        await requireAssets(assets, referenced);
         const stored = { ...document, revision: (previous?.revision ?? 0) + 1, updatedAt };
         await requestResult(documents.put(stored));
         await removeOrphanedAssets(transaction, assetIds(previous).filter(id => !referenced.includes(id)));
@@ -144,7 +153,7 @@ export function workspaceRepository(database: IDBDatabase) {
       });
     },
 
-    async deleteDocument(id: string, expectedRevision: number) {
+    async deleteDocument(id: string, expectedRevision: number): Promise<DeletedDocument> {
       return transact(database, [stores.documents, stores.assets, stores.collections], 'readwrite', async transaction => {
         const documents = transaction.objectStore(stores.documents);
         const previous = await requestResult<CreativeDocument | undefined>(documents.get(id));
@@ -160,7 +169,32 @@ export function workspaceRepository(database: IDBDatabase) {
           }));
         }
         const removedAssets = await removeOrphanedAssets(transaction, assetIds(previous));
-        return { document: previous, assets: removedAssets };
+        return { document: previous, assets: removedAssets, collections: affected };
+      });
+    },
+
+    async restoreDocument(snapshot: DeletedDocument, updatedAt: number) {
+      const { document, assets, collections } = structuredClone(snapshot);
+      validateDocument(document, updatedAt);
+      return transact(database, [stores.documents, stores.assets, stores.collections], 'readwrite', async transaction => {
+        const records = transaction.objectStore(stores.documents);
+        const blobs = transaction.objectStore(stores.assets);
+        const groups = transaction.objectStore(stores.collections);
+        if (await requestResult(records.getKey(document.id)) !== undefined) {
+          throw new WorkspaceStorageError('conflict', 'A newer document uses this identifier.');
+        }
+        for (const asset of assets) await requestResult(blobs.add(asset));
+        await requireAssets(blobs, assetIds(document));
+        const restored = { ...document, revision: document.revision + 1, updatedAt };
+        await requestResult(records.add(restored));
+        for (const prior of collections) {
+          const current = await requestResult<StoredCollection | undefined>(groups.get(prior.id));
+          if (!current || current.documentIds.includes(document.id)) continue;
+          const documentIds = [...current.documentIds];
+          documentIds.splice(Math.max(0, prior.documentIds.indexOf(document.id)), 0, document.id);
+          await requestResult(groups.put({ ...current, documentIds, revision: (current.revision ?? 1) + 1 }));
+        }
+        return restored;
       });
     },
 
