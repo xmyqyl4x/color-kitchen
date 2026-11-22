@@ -11,6 +11,7 @@ export type { ProjectRole } from './lifecycle.js';
 type Asset = { assetId: string; name: string; headRevision: number | null; version: string };
 type Revision = { revision: number; schemaVersion: number; payload: ThemeSnapshot; digest: string };
 export type ReleasedTheme = Revision & { releaseId: string };
+export type ThemeRevision = Revision & { basedOn: { assetId: string; revision: number } | null; wasReleased: boolean };
 type ReleaseResult = { status: 'released' | 'withdrawn'; version: string; releaseId: string };
 type Failure = { status: 'unavailable' | 'conflict' | 'invalid' | 'expired' } | { status: 'stale'; version: string };
 
@@ -69,8 +70,12 @@ export async function listThemeAssets(client: ClientBase, actor: ProjectActor, p
 }
 
 export async function readThemeRevision(client: ClientBase, actor: ProjectActor, projectId: string, assetId: string, revision: number) {
-  const { rows: [saved] } = await client.query<Revision>(
-    `SELECT ${revisionColumns} FROM ck.asset_revision r JOIN ck.asset a USING (organization_id,project_id,asset_id)
+  const { rows: [saved] } = await client.query<ThemeRevision>(
+    `SELECT ${revisionColumns},
+      CASE WHEN r.source_asset_id IS NOT NULL THEN jsonb_build_object('assetId',r.source_asset_id,'revision',r.source_asset_rev) END AS "basedOn",
+      EXISTS (SELECT 1 FROM ck.asset_release l WHERE (l.organization_id,l.project_id,l.asset_id,l.rev)
+        = (r.organization_id,r.project_id,r.asset_id,r.rev)) AS "wasReleased"
+     FROM ck.asset_revision r JOIN ck.asset a USING (organization_id,project_id,asset_id)
      JOIN ck.project p USING (organization_id,project_id) JOIN ck.project_member m USING (organization_id,project_id)
      WHERE r.organization_id=$1 AND m.principal_id=$2 AND r.project_id=$3 AND r.asset_id=$4 AND r.rev=$5
        AND a.kind='theme' AND p.archived_at IS NULL AND m.inactive_at IS NULL`,
@@ -95,7 +100,7 @@ async function lockTheme(client: ClientBase, organizationId: string, projectId: 
 }
 
 type Save = { projectId: string; assetId: string; operationId: string; expectedRevision: number; name: string;
-  snapshot: ThemeSnapshot; source?: { itemId: string; revision: number } };
+  snapshot: ThemeSnapshot; source?: { itemId: string; revision: number }; basedOn?: { assetId: string; revision: number } };
 type SaveResult = { status: 'saved'; revision: number; digest: string } |
   { status: 'unavailable' | 'conflict' } | { status: 'stale'; revision: number };
 
@@ -105,7 +110,8 @@ export async function saveThemeRevision(client: ClientBase, actor: ProjectActor,
   const { projectId, assetId, operationId, expectedRevision } = input;
   const name = validName(input.name), payload = themeSnapshot(input.snapshot), digest = valueDigest(payload);
   const source = input.source ? [input.source.itemId, input.source.revision] as const : [null, null] as const;
-  const hash = valueDigest([assetId, principalId, expectedRevision, name, digest, source]);
+  const lineage = input.basedOn ? [input.basedOn.assetId, input.basedOn.revision] as const : [null, null] as const;
+  const hash = valueDigest([assetId, principalId, expectedRevision, name, digest, source, ...(input.basedOn ? [lineage] : [])]);
   return inTransaction(client, async () => {
     const role = await lockMembership(client, actor, projectId);
     if (!allowsThemeAction(role, 'edit')) return { status: 'unavailable' };
@@ -124,11 +130,13 @@ export async function saveThemeRevision(client: ClientBase, actor: ProjectActor,
     }
     const revision = expectedRevision + 1;
     await client.query(`INSERT INTO ck.asset_revision (organization_id,project_id,asset_id,rev,schema_version,payload,digest,
-      author_id,operation_id,request_hash,source_item_id,source_rev) VALUES ($1,$2,$3,$4,1,$5,$6,$7,$8,$9,$10,$11)`,
-      [organizationId, projectId, assetId, revision, JSON.stringify(payload), digest, principalId, operationId, hash, ...source]);
+      author_id,operation_id,request_hash,source_item_id,source_rev,source_asset_id,source_asset_rev)
+      VALUES ($1,$2,$3,$4,1,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+      [organizationId, projectId, assetId, revision, JSON.stringify(payload), digest, principalId, operationId, hash, ...source, ...lineage]);
     await client.query(`UPDATE ck.asset SET head_rev=$4,name=$5,row_version=row_version+1
       WHERE organization_id=$1 AND project_id=$2 AND asset_id=$3`, [organizationId, projectId, assetId, revision, name]);
-    await recordAudit(client, actor, { actorKind: 'member', action: 'theme.save', kind: 'theme', resourceId: assetId,
+    const action = !input.basedOn ? 'theme.save' : input.basedOn.assetId === assetId ? 'theme.restore-revision' : 'theme.fork';
+    await recordAudit(client, actor, { actorKind: 'member', action, kind: 'theme', resourceId: assetId,
       projectId, operationId, before: expectedRevision || null, after: revision });
     return { status: 'saved', revision, digest };
   });
