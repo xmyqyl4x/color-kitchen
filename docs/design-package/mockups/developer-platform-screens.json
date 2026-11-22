@@ -1,0 +1,42 @@
+[
+  {
+    "id": "P2-A",
+    "title": "Developer theme editor",
+    "file": "developer-platform/P2-A-developer-theme-editor.png",
+    "size": [
+      1500,
+      1000
+    ],
+    "description": "A project owner maps six game interface roles and checks the selected tile and action label against a clearly labelled sample board. Committed revision 7 remains private until an owner chooses its release audience."
+  },
+  {
+    "id": "P2-B",
+    "title": "Catalog publication",
+    "file": "developer-platform/P2-B-five-language-catalog-publication.png",
+    "size": [
+      1500,
+      1000
+    ],
+    "description": "A staff publisher reviews English, French, Spanish, Portuguese and German in the same release, together with provenance and version checks. Publication changes the public catalog and records the action."
+  },
+  {
+    "id": "P2-C",
+    "title": "Mobile release and export",
+    "file": "developer-platform/P2-C-mobile-theme-release.png",
+    "size": [
+      414,
+      1020
+    ],
+    "description": "The release audience defaults to project members. An owner must deliberately select and confirm public access. Download and copy actions produce independent copies. The final release action names the selected audience."
+  },
+  {
+    "id": "P2-D",
+    "title": "AI client authorization",
+    "file": "developer-platform/P2-D-connector-project-authorization.png",
+    "size": [
+      1500,
+      1000
+    ],
+    "description": "An example external client requests project:read for one explicitly selected project. The protected operation reads only the current released theme. Current membership, project selection and revocation are enforced on each call."
+  }
+]

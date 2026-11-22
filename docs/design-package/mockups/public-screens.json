@@ -1,0 +1,162 @@
+[
+  {
+    "id": "01",
+    "title": "Home",
+    "file": "public-and-browser/01_home.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#01"
+  },
+  {
+    "id": "02",
+    "title": "Palette Studio",
+    "file": "public-and-browser/02_palette_studio.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#02"
+  },
+  {
+    "id": "03",
+    "title": "Palette Gallery",
+    "file": "public-and-browser/03_palette_gallery.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#03"
+  },
+  {
+    "id": "04",
+    "title": "Image to Palette",
+    "file": "public-and-browser/04_image_to_palette.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#04"
+  },
+  {
+    "id": "05",
+    "title": "Contrast Lab",
+    "file": "public-and-browser/05_contrast_lab.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#05"
+  },
+  {
+    "id": "06",
+    "title": "Design Preview",
+    "file": "public-and-browser/06_design_preview.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#06"
+  },
+  {
+    "id": "07",
+    "title": "Color Inspector",
+    "file": "public-and-browser/07_color_inspector.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#07"
+  },
+  {
+    "id": "08",
+    "title": "Tailwind Studio",
+    "file": "public-and-browser/08_tailwind_studio.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#08"
+  },
+  {
+    "id": "09",
+    "title": "Color Guide",
+    "file": "public-and-browser/09_color_guide.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#09"
+  },
+  {
+    "id": "10",
+    "title": "Color Atlas",
+    "file": "public-and-browser/10_color_atlas.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#10"
+  },
+  {
+    "id": "11",
+    "title": "Gradient Gallery",
+    "file": "public-and-browser/11_gradient_gallery.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#11"
+  },
+  {
+    "id": "12",
+    "title": "Gradient Studio",
+    "file": "public-and-browser/12_gradient_studio.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#12"
+  },
+  {
+    "id": "13",
+    "title": "Gradient Steps",
+    "file": "public-and-browser/13_gradient_steps.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#13"
+  },
+  {
+    "id": "14",
+    "title": "Moodboard Maker",
+    "file": "public-and-browser/14_moodboard_maker.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#14"
+  },
+  {
+    "id": "15",
+    "title": "Font Library",
+    "file": "public-and-browser/15_font_library.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#15"
+  },
+  {
+    "id": "16",
+    "title": "Type Playground",
+    "file": "public-and-browser/16_type_playground.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#16"
+  },
+  {
+    "id": "17",
+    "title": "Browser Companion",
+    "file": "public-and-browser/17_browser_companion.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#17"
+  },
+  {
+    "id": "18",
+    "title": "My Collection and Export",
+    "file": "public-and-browser/18_my_collection_and_export.png",
+    "width": 1440,
+    "height": 1000,
+    "route": "#18"
+  },
+  {
+    "id": "19",
+    "title": "Mobile Palette Studio",
+    "file": "public-and-browser/19_mobile_palette_studio.png",
+    "width": 390,
+    "height": 960,
+    "route": "#19"
+  },
+  {
+    "id": "20",
+    "title": "Mobile Cookie Preferences",
+    "file": "public-and-browser/20_mobile_cookie_preferences.png",
+    "width": 390,
+    "height": 960,
+    "route": "#20"
+  }
+]
