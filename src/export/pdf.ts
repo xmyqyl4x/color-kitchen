@@ -8,7 +8,6 @@ import { paletteText } from './text.js';
 
 export async function palettePdf(palette: Palette) {
   checkPalette(palette);
-  const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const margin = 30;
@@ -38,7 +37,6 @@ export async function boardPdf(cleanPng: Blob, settings: Readonly<{ dpi?: number
   const header = await inspectLocalImage(cleanPng);
   if (header.mime !== 'image/png' || header.width > 8192 || header.height > 8192 ||
       header.width * header.height > maxRasterPixels) throw new MediaJobError('format', 'Use a supported board PNG.');
-  const { PDFDocument } = await import('pdf-lib');
   const pdf = await PDFDocument.create();
   const image = await pdf.embedPng(await cleanPng.arrayBuffer());
   const width = image.width * 72 / dpi;
@@ -48,3 +46,4 @@ export async function boardPdf(cleanPng: Blob, settings: Readonly<{ dpi?: number
   const bytes = await pdf.save();
   return { blob: new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }), width, height, companion: settings.companion };
 }
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';

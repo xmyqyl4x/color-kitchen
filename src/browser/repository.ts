@@ -122,6 +122,41 @@ export function workspaceRepository(database: IDBDatabase) {
       return record ? { ...record, revision: record.revision ?? 1 } : null;
     },
 
+    async backupSource(includeAssets: boolean, collectionId?: string) {
+      return transact(database, [stores.documents, stores.collections, stores.assets], 'readonly', async transaction => {
+        const records = transaction.objectStore(stores.documents);
+        const groups = transaction.objectStore(stores.collections);
+        const images = transaction.objectStore(stores.assets);
+        let documents: CreativeDocument[];
+        let collections: StoredCollection[];
+        if (collectionId !== undefined) {
+          const group = await requestResult<StoredCollection | undefined>(groups.get(collectionId));
+          if (!group) throw new WorkspaceStorageError('invalid', 'The collection is unavailable.');
+          if (group.documentIds.length > 1000) throw new BackupError('too-large', 'Export a smaller collection.');
+          collections = [group];
+          documents = [];
+          for (const id of group.documentIds) {
+            const item = await requestResult<CreativeDocument | undefined>(records.get(id));
+            if (!item) throw new WorkspaceStorageError('invalid', 'A collection document is unavailable.');
+            documents.push(item);
+          }
+        } else {
+          documents = await requestResult<CreativeDocument[]>(records.getAll(undefined, 1001));
+          collections = await requestResult<StoredCollection[]>(groups.getAll(undefined, 1001));
+        }
+        if (documents.length > 1000 || collections.length > 1000) throw new BackupError('too-large', 'Export a smaller collection.');
+        const assets: StoredAsset[] = [];
+        if (includeAssets) {
+          const references = new Set(documents.flatMap(assetIds));
+          for (const id of references) {
+            const asset = await requestResult<StoredAsset | undefined>(images.get(id));
+            if (asset) assets.push(asset);
+          }
+        }
+        return { documents, collections: collections.map(group => ({ ...group, revision: group.revision ?? 1 })), assets };
+      });
+    },
+
     async restoreBackup(text: string) {
       const { documents, collections, assets, omittedAssetIds } = previewBackup(text);
       if (omittedAssetIds.length) throw new BackupError('missing-assets', 'Restore requires all referenced images.');

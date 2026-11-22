@@ -105,7 +105,7 @@ export function designPreviewExport(task: Extract<MediaTask, { kind: 'design-pre
   const plan = composePreview(task.template, task.variant, task.palette);
   const tokens = Object.fromEntries(Object.entries(plan.roles).map(([role, color]) => [role, colorCss(color)]));
   const job = startMediaJob(task, signal);
-  return { cancel: job.cancel, result: job.result.then(raster => ({ ...raster, tokens, companion: JSON.stringify(tokens, null, 2) })) };
+  return { ...job, result: job.result.then(raster => ({ ...raster, tokens, companion: JSON.stringify(tokens, null, 2) })) };
 }
 
 type TypographySettings = Parameters<typeof typographyCss>[1];

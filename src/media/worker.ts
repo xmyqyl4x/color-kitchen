@@ -1,13 +1,16 @@
 import { downsampleImage, extractImagePalette, ImageSampleError, sampleImagePoint } from '../image/pixels.js';
 import { decodeLocalImage } from './decode.js';
 import { renderDesign, renderMoodboard } from './render.js';
-import { MediaJobError, type MediaReply, type MediaTask } from './protocol.js';
+import { MediaJobError, type MediaReply, type MediaTask, type MediaUpdate } from './protocol.js';
 
 async function run(task: MediaTask): Promise<MediaReply> {
   try {
+    scope.postMessage({ progress: 'loading' });
+    if (task.kind === 'design-preview' || task.kind === 'moodboard') scope.postMessage({ progress: 'processing' });
     if (task.kind === 'design-preview') return { ok: true, value: await renderDesign(task) };
     if (task.kind === 'moodboard') return { ok: true, value: await renderMoodboard(task) };
     const bitmap = await decodeLocalImage(task.source);
+    scope.postMessage({ progress: 'processing' });
     let canvas: OffscreenCanvas | undefined;
     try {
       const source = { width: bitmap.width, height: bitmap.height };
@@ -47,6 +50,6 @@ async function run(task: MediaTask): Promise<MediaReply> {
 
 const scope = globalThis as unknown as {
   onmessage: ((event: MessageEvent<MediaTask>) => void) | null;
-  postMessage: (reply: MediaReply) => void;
+  postMessage: (reply: MediaUpdate) => void;
 };
 scope.onmessage = event => { void run(event.data).then(reply => scope.postMessage(reply)); };
