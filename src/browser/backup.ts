@@ -1,6 +1,7 @@
 import { validateGradient } from '../gradient/gradient.js';
 import { checkPalette, openPaletteSession } from '../palette/document.js';
 import type { BackupEnvelope, Collection, CreativeDocument, StoredAsset } from './document.js';
+import { validateBoardComposition } from './board.js';
 
 const maxAssetBytes = 20 * 1024 * 1024;
 export const maxBackupBytes = 32 * 1024 * 1024;
@@ -45,6 +46,7 @@ function documentRecord(document: CreativeDocument) {
           (document.caption !== undefined && (typeof document.caption !== 'string' || document.caption.length > 240))) {
         throw new RangeError('Invalid board.');
       }
+      validateBoardComposition(document);
       return document;
     default: throw new RangeError('Unknown document kind.');
   }
