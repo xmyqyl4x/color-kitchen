@@ -63,6 +63,7 @@ type EncryptedClaim = {
   leaseToken: string;
   leaseUntil: Date;
   attempt: number;
+  createdAt: Date;
 };
 
 export async function claimInquiry(client: ClientBase, now: Date, leaseSeconds = 120) {
@@ -80,7 +81,7 @@ export async function claimInquiry(client: ClientBase, now: Date, leaseSeconds =
     FROM due WHERE row.request_id = due.request_id
     RETURNING row.request_id AS "requestId", purpose, locale, reply_email_cipher AS "emailCipher",
       message_cipher AS "messageCipher", key_id AS "keyId", lease_token AS "leaseToken",
-      lease_until AS "leaseUntil", attempt_count AS attempt
+      lease_until AS "leaseUntil", attempt_count AS attempt, created_at AS "createdAt"
   `, [now, randomUUID(), leaseSeconds, maxAttempts]);
   return rows[0] ?? null;
 }
