@@ -1,9 +1,9 @@
 import { readFile } from 'node:fs/promises';
-import { publicCatalogDetail, publicCatalogListing } from '../catalog/public.js';
-import { slugPattern, type CatalogKind } from '../catalog/repository.js';
+import { publicCatalogDetail } from '../catalog/public.js';
+import { slugPattern } from '../catalog/repository.js';
 import type { CatalogHttpDependencies } from '../http/public-catalog.js';
 import { resolveLocale } from '../i18n/resolve.js';
-import { isLocale, type Locale } from '../model/locales.js';
+import { isLocale } from '../model/locales.js';
 import { homeScreen, html, pathFor, renderShell } from './shell.js';
 import { screenRoutes, screenTitle, webText, type Screen } from './strings.js';
 import { paletteStudio } from './studio.js';
@@ -13,17 +13,18 @@ import { colorToolsScreen } from './color-tools.js';
 import { previewToolsScreen } from './preview-tools.js';
 import { discoveryKinds, discoveryPage } from './discovery.js';
 import { gradientToolsScreen } from './gradient-tools.js';
+import { fontToolsPage } from './font-tools.js';
 
 const knownScreens = new Set<string>(screenRoutes);
-const listings = { fonts: 'font' } as const;
 const policySlugs = new Set(['licensing', 'terms', 'privacy', 'cookies']);
 const fileRoutes: Record<string, [string, string]> = {
   '/assets/kitchen.css': ['../../../src/web/kitchen.css', 'text/css; charset=utf-8'],
   '/assets/source-sans.woff2': ['../../../catalog/fonts/SourceSans3-Regular.woff2', 'font/woff2'],
   '/assets/source-sans-license.txt': ['../../../catalog/fonts/SourceSans3-OFL.txt', 'text/plain; charset=utf-8'],
+  '/assets/fonts/SourceSans3-Regular.woff2': ['../../../catalog/fonts/SourceSans3-Regular.woff2', 'font/woff2'],
   '/vendor/pdf-lib.js': ['../../../node_modules/pdf-lib/dist/pdf-lib.esm.min.js', 'text/javascript; charset=utf-8'],
 };
-const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/messages|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text|ui|collection-client|collection-text|export-drawer|image-tools-client|image-tools-text|color-tools-client|color-tools-text|preview-tools-client|preview-tools-text|discovery-client|discovery-text|gradient-tools-client|gradient-tools-text))\.js$/;
+const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/messages|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text|ui|collection-client|collection-text|export-drawer|image-tools-client|image-tools-text|color-tools-client|color-tools-text|preview-tools-client|preview-tools-text|discovery-client|discovery-text|gradient-tools-client|gradient-tools-text|font-tools-client|font-tools-text))\.js$/;
 
 async function webFile(request: Request, path: string) {
   const asset = Object.hasOwn(fileRoutes, path) ? fileRoutes[path] : undefined;
@@ -44,23 +45,7 @@ function navigationLocale(request: Request) {
 
 export function webHttp(dependencies: CatalogHttpDependencies) {
   const discovery = discoveryPage(dependencies);
-  async function catalogContent(locale: Locale, screen: Screen, kind: CatalogKind, slug?: string) {
-    if (slug) {
-      const found = await dependencies.withClient(client => publicCatalogDetail(client, kind, slug, locale));
-      if (!found) return null;
-      const { title, summary, body } = found.entry;
-      const content = '<h1>' + html(title) + '</h1><p>' + html(summary) + '</p>' + (body ? '<p>' + html(body) + '</p>' : '');
-      return { title, content, description: summary, index: true };
-    }
-    const listing = await dependencies.withClient(client => publicCatalogListing(client, {
-      locale, kind, now: dependencies.now?.() ?? new Date(), measurement: false,
-    }));
-    const title = screenTitle(locale, screen);
-    const cards = listing.items.map(({ entry }) => '<li><a href="' + pathFor(locale, screen, entry.slug) +
-      '" data-focus-key="entry-' + entry.slug + '"><h2>' + html(entry.title) + '</h2><p>' + html(entry.summary) + '</p></a></li>').join('');
-    return { title, content: '<h1>' + html(title) + '</h1>' + (cards ? '<ul class="catalog-grid">' + cards + '</ul>' :
-      '<p>' + html(webText(locale, 'empty')) + '</p>'), index: true };
-  }
+  const fonts = fontToolsPage(dependencies);
 
   return async (request: Request) => {
     const url = new URL(request.url);
@@ -106,21 +91,24 @@ export function webHttp(dependencies: CatalogHttpDependencies) {
     if ((screen === 'gradient-studio' || screen === 'gradient-steps') && !entry) return renderShell(request, {
       ...base, content: gradientToolsScreen(locale, screen), module: '/src/web/gradient-tools-client.js', index: true,
     });
-    const kind = Object.hasOwn(listings, screen) ? listings[screen as keyof typeof listings] : undefined;
     try {
       if (Object.hasOwn(discoveryKinds, screen)) {
         const result = await discovery(request, screen as keyof typeof discoveryKinds, locale, entry);
         if (result instanceof Response) return result;
         return result ? renderShell(request, { ...base, ...result, module: '/src/web/discovery-client.js' }) : missing();
       }
-      if (kind) {
-        const content = await catalogContent(locale, namedScreen, kind, entry);
-        return content ? renderShell(request, { ...base, ...content }) : missing();
+      if (screen === 'fonts' || (screen === 'type-playground' && !entry)) {
+        const result = await fonts(request, locale, screen, entry);
+        return result ? renderShell(request, { ...base, ...result, module: '/src/web/font-tools-client.js' }) : missing();
       }
       if (entry) return missing();
       if (policySlugs.has(screen)) {
-        const content = await catalogContent(locale, namedScreen, 'policy', screen);
-        if (content) return renderShell(request, { ...base, ...content });
+        const found = await dependencies.withClient(client => publicCatalogDetail(client, 'policy', screen, locale));
+        if (found) {
+          const { title, summary, body } = found.entry;
+          const content = heading(title) + '<p>' + html(summary) + '</p>' + (body ? '<p>' + html(body) + '</p>' : '');
+          return renderShell(request, { ...base, title, content, description: summary, index: true });
+        }
       }
     } catch {
       return renderShell(request, { ...base, content: heading(title) + notice('loadError'), status: 503 });
