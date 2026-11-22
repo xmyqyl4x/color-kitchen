@@ -32,3 +32,9 @@ The local PostgreSQL schema maps a provider issuer and external organization ide
 Create a project and its initial owner in one transaction. Membership mutations update the project version under its row lock. A deferred check requires an active owner at commit for every active project, so an owner transfer can complete atomically. Deactivation uses `inactive_at`. Staff publication permissions use their own grant boundary.
 
 Theme revisions snapshot the selected swatches and role bindings. Their composite keys carry organization, project and asset scope. Drafts can omit theme roles. Release requires all six roles, defaults to the project audience and permits one current release per asset. Withdrawal preserves the original release and revision. Command receipts commit with their completed result, alongside the business changes and audit event.
+
+## Catalog moderation history
+
+Catalog staff grants are independent of project ownership. A review records the exact catalog revision and edit version and references a publisher grant. The coverage view identifies missing locales on each draft or published revision. The migration records current publications as the history baseline while retaining the existing public IDs, URLs, revisions and query projection.
+
+Publication, review and audit history is append-only. Retain sealed revisions referenced by publication history. An unreviewed, unsealed draft can be removed with its dependent entries under a staff retention process. Audit entries hold actor, action and revision metadata. Retention changes for publication and audit records require an owner-approved migration and policy.
