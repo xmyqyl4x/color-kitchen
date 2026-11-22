@@ -41,3 +41,9 @@ The endpoints below start at `/api/v1/admin/catalog`. `R` denotes `/{itemId}/rev
 | `GET /audit` | Filter by `itemId` or `action`, and page with the exact `occurredAt` and `eventId` from `next` in `beforeTime` and `beforeId`. |
 
 Use the exact API base path for the catalog root. A stale `412` returns the current relevant versions. Missing required translations return `422` with a locale list. Review checks the requested versions without saving an approval. Publication repeats the checks inside its transaction and persists the approval, pointer, audit, retryable invalidation job and receipt together. Public JSON revalidates on every read, and catalog HTML uses `no-store`. The server retries due invalidation jobs after interrupted publication responses or failed delivery.
+
+### Staff portal
+
+Open `/{locale}/catalog-admin` after the sign-in gateway has issued the session cookie. Editors can create and fork drafts, edit translations, and maintain provenance. Publishers review the selected revision and confirm publication or rollback. Both roles can inspect the live revision, translation coverage, changes between revisions, and audit history. To share a particular revision with another authorized staff member, copy its URL after opening it in the portal.
+
+If a draft changes during editing, load the current version to compare it with the text still in the form. Save the reconciled text or explicitly discard your local edits. Unsaved content stays in memory while the page is open. The portal uses the same authorization and publication rules as the HTTP API.

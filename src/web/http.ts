@@ -16,6 +16,8 @@ import { gradientToolsScreen } from './gradient-tools.js';
 import { fontToolsPage } from './font-tools.js';
 import { guideScreen } from './guide.js';
 import { publishedPolicy, trustScreen } from './trust.js';
+import type { VerifyIdentity } from '../http/identity.js';
+import { adminPortal } from './admin.js';
 
 const knownScreens = new Set<string>(screenRoutes);
 const fileRoutes: Record<string, [string, string]> = {
@@ -25,7 +27,7 @@ const fileRoutes: Record<string, [string, string]> = {
   '/assets/fonts/SourceSans3-Regular.woff2': ['../../../catalog/fonts/SourceSans3-Regular.woff2', 'font/woff2'],
   '/vendor/pdf-lib.js': ['../../../node_modules/pdf-lib/dist/pdf-lib.esm.min.js', 'text/javascript; charset=utf-8'],
 };
-const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/messages|guide\/(?:local|response)|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text|ui|collection-client|collection-text|export-drawer|image-tools-client|image-tools-text|color-tools-client|color-tools-text|preview-tools-client|preview-tools-text|discovery-client|discovery-text|gradient-tools-client|gradient-tools-text|font-tools-client|font-tools-text|guide-client|guide-text|trust-client|trust-text|ad-client))\.js$/;
+const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/(?:messages|admin-errors)|guide\/(?:local|response)|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text|ui|collection-client|collection-text|export-drawer|image-tools-client|image-tools-text|color-tools-client|color-tools-text|preview-tools-client|preview-tools-text|discovery-client|discovery-text|gradient-tools-client|gradient-tools-text|font-tools-client|font-tools-text|guide-client|guide-text|trust-client|trust-text|ad-client|admin-client|admin-text))\.js$/;
 
 async function webFile(request: Request, path: string) {
   const asset = Object.hasOwn(fileRoutes, path) ? fileRoutes[path] : undefined;
@@ -44,7 +46,7 @@ function navigationLocale(request: Request) {
   return resolveLocale({ saved, browser: request.headers.get('accept-language') ?? undefined }).locale;
 }
 
-export function webHttp(dependencies: CatalogHttpDependencies & { adFrameUrl?: string }) {
+export function webHttp(dependencies: CatalogHttpDependencies & { adFrameUrl?: string; verifyIdentity?: VerifyIdentity }) {
   const discovery = discoveryPage(dependencies);
   const fonts = fontToolsPage(dependencies);
   const adFrame = approvedAdFrame(dependencies.adFrameUrl);
@@ -74,6 +76,7 @@ export function webHttp(dependencies: CatalogHttpDependencies & { adFrameUrl?: s
         html(webText(locale, 'home')) + '</a></p>', status: 404 });
     if (!route || !isLocale(first) || !knownScreens.has(screen) || (entry && (entry.length > 100 || !slugPattern.test(entry)))) return missing();
     const namedScreen = screen as Screen;
+    if (screen === 'catalog-admin' && !entry) return adminPortal(request, locale, dependencies);
     const title = screenTitle(locale, namedScreen);
     const base = { locale, screen: namedScreen, title, slug: entry, adFrame };
     if (!screen && !entry) return renderShell(request, { ...base, content: homeScreen(locale), index: true });
