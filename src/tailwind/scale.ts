@@ -24,14 +24,14 @@ export function normalizeTokenName(name: string) {
   return normalized;
 }
 
-const versionLabels = { 3: '3.4.19', 4: '4.3.5' } as const;
+export const tailwindVersions = { 3: '3.4.19', 4: '4.3.5' } as const;
 
 export function inspectBuiltInScale(version: TailwindVersion, name: string) {
   checkVersion(version);
   const key = normalizeTokenName(name);
   const palettes: Readonly<Record<string, readonly string[]>> = pinnedColors[version];
   if (!Object.hasOwn(palettes, key)) return null;
-  return { version: versionLabels[version], name: key, colors: Object.fromEntries(shades.map(
+  return { version: tailwindVersions[version], name: key, colors: Object.fromEntries(shades.map(
     (level, index) => [level, palettes[key]![index]!],
   )) as Record<Shade, string> };
 }
