@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import type { Client } from 'pg';
+import { migrate, migrationFolder, readMigrations } from '../src/db/migrate.js';
 
 export async function withTestDatabase<T>(work: (url: string) => Promise<T>): Promise<T> {
   const testUrl = process.env.COLOR_KITCHEN_TEST_DATABASE_URL;
@@ -23,4 +26,17 @@ export async function withTestDatabase<T>(work: (url: string) => Promise<T>): Pr
   } finally {
     await admin.end();
   }
+}
+
+export async function withMigratedDatabase<T>(work: (client: Client, url: string) => Promise<T>) {
+  return withTestDatabase(async url => {
+    const client = new pg.Client({ connectionString: url });
+    await client.connect();
+    try {
+      await migrate(client, await readMigrations(fileURLToPath(migrationFolder)));
+      return await work(client, url);
+    } finally {
+      await client.end();
+    }
+  });
 }
