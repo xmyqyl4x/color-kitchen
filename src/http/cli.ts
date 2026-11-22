@@ -5,6 +5,8 @@ import { postgresGuideAdmission } from '../guide/admission.js';
 import { guideHttp, guidePath } from './guide.js';
 import { catalogHttp } from './public-catalog.js';
 import { operationsHttp } from './operations.js';
+import { identityFromEnvironment } from './identity.js';
+import { projectThemesHttp } from './project-themes.js';
 import { httpServer } from './server.js';
 import { webHttp } from '../web/http.js';
 import { inquiryWebhook } from '../operations/inquiry-delivery.js';
@@ -23,6 +25,7 @@ async function withClient<T>(work: (client: ClientBase) => Promise<T>) {
 }
 const measurement = process.env.COLOR_KITCHEN_MEASUREMENT === 'true';
 const catalog = catalogHttp({ withClient, measurement });
+const projectThemes = projectThemesHttp({ withClient, verifyIdentity: identityFromEnvironment(process.env) });
 const gatewayKey = process.env.AI_GATEWAY_API_KEY;
 const model = process.env.COLOR_KITCHEN_GUIDE_MODEL;
 const provider = gatewayKey && model ? aiColorGuideProvider(createGateway({ apiKey: gatewayKey })(model)) : undefined;
@@ -63,7 +66,7 @@ const deliver = delivery && contact ? inquiryWebhook({ url: delivery, token: pro
 const server = httpServer(async request => {
   const { pathname } = new URL(request.url);
   if (pathname === guidePath) return guide(request);
-  if (pathname.startsWith('/api/')) return await operations(request) ?? catalog(request);
+  if (pathname.startsWith('/api/')) return await operations(request) ?? await projectThemes(request) ?? catalog(request);
   return web(request);
 },
   process.env.COLOR_KITCHEN_ORIGIN ?? 'http://localhost:' + port);

@@ -12,7 +12,9 @@ export function themeSnapshot(input: ThemeSnapshot): ThemeSnapshot {
   if (!input || !Array.isArray(input.swatches) || input.swatches.length < 1 || input.swatches.length > 12 ||
       typeof input.roles !== 'object' || input.roles === null || Array.isArray(input.roles)) throw new RangeError('Invalid theme snapshot.');
   const ids = new Set<string>();
-  const swatches = input.swatches.map(({ id, color }) => {
+  const swatches = input.swatches.map(swatch => {
+    if (!swatch || typeof swatch !== 'object') throw new RangeError('Invalid theme swatch.');
+    const { id, color } = swatch;
     if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(id) || ids.has(id)) throw new RangeError('Invalid theme swatch ID.');
     assertColor(color);
     ids.add(id);

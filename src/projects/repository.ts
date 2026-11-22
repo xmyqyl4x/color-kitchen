@@ -69,6 +69,20 @@ export async function listThemeAssets(client: ClientBase, actor: ProjectActor, p
   return rows;
 }
 
+export async function readThemeAsset(client: ClientBase, actor: ProjectActor, projectId: string, assetId: string) {
+  const { rows: [asset] } = await client.query<Asset & { activeRelease: {
+    releaseId: string; revision: number; audience: 'project' | 'public';
+  } | null }>(`SELECT ${assetColumns}, CASE WHEN l.release_id IS NOT NULL THEN
+      jsonb_build_object('releaseId',l.release_id,'revision',l.rev,'audience',l.audience) END AS "activeRelease"
+    FROM ck.asset a JOIN ck.project p USING (organization_id,project_id) JOIN ck.project_member m USING (organization_id,project_id)
+    LEFT JOIN ck.asset_release l ON (a.organization_id,a.project_id,a.asset_id)=(l.organization_id,l.project_id,l.asset_id)
+      AND l.withdrawn_at IS NULL
+    WHERE a.organization_id=$1 AND m.principal_id=$2 AND a.project_id=$3 AND a.asset_id=$4
+      AND m.inactive_at IS NULL AND p.archived_at IS NULL AND a.archived_at IS NULL AND a.kind='theme'`,
+  [actor.organizationId, actor.principalId, projectId, assetId]);
+  return asset ?? null;
+}
+
 export async function readThemeRevision(client: ClientBase, actor: ProjectActor, projectId: string, assetId: string, revision: number) {
   const { rows: [saved] } = await client.query<ThemeRevision>(
     `SELECT ${revisionColumns},
