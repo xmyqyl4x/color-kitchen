@@ -7,5 +7,6 @@
 | PostgreSQL | 18.6 | Disposable local and CI schema fixtures, PostgreSQL License | Database implementation. Verify clean migration, replay and prior-fixture upgrades. The production major is a shared-platform dependency. |
 | node-postgres | 8.23.1 | Parameterized database access and transaction driver, MIT | Database implementation. Verify against real PostgreSQL in CI. |
 | Playwright | 1.62.1 | Chromium browser integration tests, Apache-2.0 | Application team. Verify fresh, upgraded and blocked IndexedDB databases in CI. |
+| FormatJS | ICU parser 3.5.23, IntlMessageFormat 12.2.0 | Locale-aware message parsing, placeholder validation and formatting, BSD-3-Clause | Application team. Verify five-locale parity and rendering in CI. |
 
 The Node version file and npm lockfile record the installed toolchain. Update the register when an adopted component or tested compatibility baseline changes.

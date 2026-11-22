@@ -18,3 +18,7 @@ Use the owning team's backup and selective recovery process for shared data.
 ## Catalog fixtures
 
 After migrations, run `npm run db:seed` with the development connection to load the five localized catalog examples. Replaying the same seed keeps the published revision and count stable. A deliberate source edit uses a new revision. The font is the unmodified Regular WOFF2 from the [Adobe Source Sans 3 3.052R release](https://github.com/adobe-fonts/source-sans/releases/tag/3.052R). The importer verifies the original font checksum and [license notice](../catalog/fonts/SourceSans3-OFL.txt).
+
+## Localized releases
+
+The application compiles the version-controlled ICU messages in `src/i18n/messages.ts`. Use a previously verified application build to recover a known-good interface bundle. Catalog and policy content follow their own sealed database revision. The publication adapter requires valid UI messages before calling the database publisher, which verifies all five content variants and their policy effective date. A failed check preserves the prior publication.

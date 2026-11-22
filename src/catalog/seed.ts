@@ -5,6 +5,7 @@ import { inTransaction } from '../db/transaction.js';
 import { locales, type Locale } from '../model/locales.js';
 import type { ColorValue } from '../model/color.js';
 import { slugPattern } from './repository.js';
+import { publishLocalizedRevision } from './publication.js';
 
 type Translation = Readonly<{ title: string; summary: string }>;
 type CommonSeed = Readonly<{
@@ -143,8 +144,7 @@ export async function seedCatalog(client: ClientBase, entries: readonly CatalogS
         await client.query('INSERT INTO ck.catalog_text (item_id, rev, locale, title, summary) VALUES ($1,$2,$3,$4,$5)',
           [itemId, revision, locale, translation.title, translation.summary]);
       }
-      await client.query('SELECT ck.publish_catalog_revision($1, $2, $3, $4)',
-        [itemId, revision, item.row_version, locales.length + 1]);
+      await publishLocalizedRevision(client, { itemId, revision, itemVersion: item.row_version, editVersion: locales.length + 1 });
       inserted++;
     }
     return { inserted, unchanged: prepared.length - inserted };
