@@ -91,7 +91,9 @@ function showPixels(preview: MediaResults['image-preview']['preview']) {
 
 function renderColors(colors: readonly ColorValue[]) {
   output.replaceChildren(...colors.map(color => {
-    const item = node('div', undefined, 'image-color');
+    const item = node('a', undefined, 'image-color');
+    item.href = '/' + locale + '/color-inspector#color=' + encodeURIComponent(colorCss(color));
+    item.setAttribute('aria-label', screenTitle(locale, 'color-inspector') + ' · ' + toHex(color).hex);
     const tile = node('span');
     tile.style.backgroundColor = colorCss(color);
     item.append(tile, node('code', toHex(color).hex));

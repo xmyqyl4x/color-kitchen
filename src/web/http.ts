@@ -9,6 +9,7 @@ import { screenRoutes, screenTitle, webText, type Screen } from './strings.js';
 import { paletteStudio } from './studio.js';
 import { collectionScreen } from './collection.js';
 import { imageToolsScreen } from './image-tools.js';
+import { colorToolsScreen } from './color-tools.js';
 
 const knownScreens = new Set<string>(screenRoutes);
 const listings = { palettes: 'palette', colors: 'color', gradients: 'gradient', fonts: 'font' } as const;
@@ -19,7 +20,7 @@ const fileRoutes: Record<string, [string, string]> = {
   '/assets/source-sans-license.txt': ['../../../catalog/fonts/SourceSans3-OFL.txt', 'text/plain; charset=utf-8'],
   '/vendor/pdf-lib.js': ['../../../node_modules/pdf-lib/dist/pdf-lib.esm.min.js', 'text/javascript; charset=utf-8'],
 };
-const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/messages|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text|ui|collection-client|collection-text|export-drawer|image-tools-client|image-tools-text))\.js$/;
+const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/messages|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text|ui|collection-client|collection-text|export-drawer|image-tools-client|image-tools-text|color-tools-client|color-tools-text))\.js$/;
 
 async function webFile(request: Request, path: string) {
   const asset = Object.hasOwn(fileRoutes, path) ? fileRoutes[path] : undefined;
@@ -91,6 +92,9 @@ export function webHttp(dependencies: CatalogHttpDependencies) {
       module: '/src/web/collection-client.js' });
     if ((screen === 'image-to-palette' || screen === 'moodboard') && !entry) return renderShell(request, {
       ...base, content: imageToolsScreen(locale, screen), module: '/src/web/image-tools-client.js', index: true,
+    });
+    if ((screen === 'contrast' || screen === 'color-inspector') && !entry) return renderShell(request, {
+      ...base, content: colorToolsScreen(locale, screen), module: '/src/web/color-tools-client.js', index: true,
     });
     const kind = Object.hasOwn(listings, screen) ? listings[screen as keyof typeof listings] : undefined;
     try {
