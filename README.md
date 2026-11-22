@@ -8,7 +8,7 @@ Install the integration browser using `npx playwright install chromium`. To use 
 
 Run `npm run db:migrate` with `DATABASE_URL` set to an intended development database. The command reports the verified schema head and migrations applied. See the [database runbook](docs/database.md) and [technology register](docs/technology.md).
 
-Start the compiled HTTP server with `npm start`. See the [public HTTP contract](docs/public-http.md) for setup, examples and cache behavior.
+Start the compiled HTTP server with `npm start` and open `http://localhost:3000` for the public workspace. See the [public HTTP contract](docs/public-http.md) for setup, examples and cache behavior.
 
 ## Export fidelity
 
