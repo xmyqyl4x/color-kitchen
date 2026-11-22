@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { test } from 'node:test';
+import { webHttp } from '../src/web/http.js';
+import { withBrowserPage } from './browser.js';
+import { withHttp } from './http.js';
+
+test('gradient keyboard editing retains coincident stops, samples the last stop at the edge, and opens the same palette', async () => {
+  const site = webHttp({ async withClient() { throw new Error('Gradient editing is local.'); } });
+  await withHttp(site, origin => withBrowserPage(async page => {
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.goto(origin + '/en/gradient-studio');
+    await page.locator('[data-stop]').nth(2).waitFor();
+    await page.locator('#gr-add').press('Enter');
+    const edge = page.locator('[data-stop]').nth(2).getByRole('textbox');
+    await edge.fill('rgb(255 0 0 / .5)');
+    await edge.blur();
+    assert.match(await page.locator('#gr-css').inputValue(), /color\(srgb 1 0 0 \/ 0.5\) 50%/);
+    await page.locator('#gr-other').press('Enter');
+    await page.locator('#gr-samples li').nth(4).waitFor();
+    const count = page.locator('#gr-count');
+    await count.fill('3');
+    await count.blur();
+    const sample = await page.locator('#gr-samples code').allTextContents();
+    assert.deepEqual(sample, ['#213C35', '#FF000080', '#E4B363']);
+    await page.locator('#gr-reverse').press('Enter');
+    assert.equal(await page.locator('#gr-samples code').first().textContent(), '#E4B363');
+    await page.locator('#gr-reverse').press('Enter');
+    await page.locator('#gr-use').press('Enter');
+    await page.waitForURL('**/palette-studio');
+    assert.equal(await page.locator('[data-control="step-1:value"]').inputValue(), 'color(srgb 1 0 0 / 0.5)');
+    await page.goto(origin + '/en/gradient-studio');
+    await page.locator('[data-stop]').nth(3).waitFor();
+    await page.locator('#gr-type').selectOption('conic');
+    await page.locator('#gr-export').click();
+    await page.locator('#export-format').selectOption('svg');
+    await page.locator('#export-download').click();
+    await page.getByText('This gradient needs a PNG to preserve its appearance. Select PNG.').waitFor();
+    await page.locator('#export-format').selectOption('png');
+    const downloaded = page.waitForEvent('download');
+    await page.locator('#export-download').click();
+    assert.equal((await readFile((await (await downloaded).path())!)).subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  }));
+});

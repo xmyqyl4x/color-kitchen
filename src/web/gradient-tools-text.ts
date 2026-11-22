@@ -1,0 +1,33 @@
+import type { Locale } from '../model/locales.js';
+import { translate, type Translation } from './ui.js';
+const text = {
+  type: ['Gradient type', 'Type de dégradé', 'Tipo de degradado', 'Tipo de degradê', 'Verlaufstyp'],
+  linear: ['Linear', 'Linéaire', 'Lineal', 'Linear', 'Linear'],
+  radial: ['Radial', 'Radial', 'Radial', 'Radial', 'Radial'],
+  conic: ['Conic', 'Conique', 'Cónico', 'Cónico', 'Konisch'],
+  interpolation: ['Interpolation', 'Interpolation', 'Interpolación', 'Interpolação', 'Interpolation'],
+  hue: ['Hue path', 'Trajet de teinte', 'Trayecto de matiz', 'Sentido da matiz', 'Farbtonverlauf'],
+  shorter: ['Shorter', 'Plus court', 'Más corto', 'Mais curto', 'Kürzer'],
+  longer: ['Longer', 'Plus long', 'Más largo', 'Mais longo', 'Länger'],
+  increasing: ['Increasing', 'Croissant', 'Creciente', 'Crescente', 'Zunehmend'],
+  decreasing: ['Decreasing', 'Décroissant', 'Decreciente', 'Decrescente', 'Abnehmend'],
+  angle: ['Direction (degrees)', 'Direction (degrés)', 'Dirección (grados)', 'Direção (graus)', 'Richtung (Grad)'],
+  center: ['Center', 'Centre', 'Centro', 'Centro', 'Mittelpunkt'],
+  stop: ['Stop', 'Point', 'Parada', 'Ponto', 'Farbstopp'],
+  position: ['Position (%)', 'Position (%)', 'Posición (%)', 'Posição (%)', 'Position (%)'],
+  color: ['Color', 'Couleur', 'Color', 'Cor', 'Farbe'],
+  opacity: ['Opacity (%)', 'Opacité (%)', 'Opacidad (%)', 'Opacidade (%)', 'Deckkraft (%)'],
+  add: ['Add stop', 'Ajouter un point', 'Añadir parada', 'Adicionar ponto', 'Farbstopp hinzufügen'],
+  remove: ['Remove stop', 'Supprimer le point', 'Eliminar parada', 'Remover ponto', 'Farbstopp entfernen'],
+  reverse: ['Reverse', 'Inverser', 'Invertir', 'Inverter', 'Umkehren'],
+  steps: ['Sample count', 'Nombre d’échantillons', 'Cantidad de muestras', 'Número de amostras', 'Anzahl der Proben'],
+  open: ['Open sampled palette', 'Ouvrir la palette échantillonnée', 'Abrir paleta muestreada', 'Abrir paleta amostrada', 'Abgetastete Palette öffnen'],
+  preview: ['Gradient preview', 'Aperçu du dégradé', 'Vista previa del degradado', 'Pré-visualização do degradê', 'Verlaufsvorschau'],
+  invalid: ['Check the stop values. Positions may match for a hard edge.', 'Vérifiez les points. Des positions égales créent une arête nette.',
+    'Revisa los valores. Las posiciones iguales crean un borde marcado.', 'Verifique os valores. Posições iguais criam uma transição abrupta.',
+    'Prüfen Sie die Werte. Gleiche Positionen erzeugen eine harte Kante.'],
+  save: ['Save a copy', 'Enregistrer une copie', 'Guardar una copia', 'Guardar uma cópia', 'Kopie speichern'],
+  saved: ['Gradient saved on this device.', 'Dégradé enregistré sur cet appareil.', 'Degradado guardado en este dispositivo.',
+    'Degradê guardado neste dispositivo.', 'Verlauf auf diesem Gerät gespeichert.'],
+} as const satisfies Record<string, Translation>;
+export const gradientText = (locale: Locale, key: keyof typeof text) => translate(locale, text[key]);

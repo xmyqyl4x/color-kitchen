@@ -3,7 +3,7 @@ import type { CreativeDocument } from '../browser/document.js';
 import { createBrowserMedia } from '../browser/media.js';
 import { workspaceRepository, type DeletedDocument } from '../browser/repository.js';
 import { colorCss } from '../color/css.js';
-import { readActiveDraft, storeActivePalette } from './draft.js';
+import { readActiveDraft, readGradientDraft, storeActivePalette, storeGradientDraft } from './draft.js';
 import { openExportDrawer } from './export-drawer.js';
 import { collectionText } from './collection-text.js';
 import { clientLocale, get, node, press } from './ui.js';
@@ -85,6 +85,11 @@ function render() {
     const actions = node('div', undefined, 'studio-actions');
     if (item.kind === 'palette') actions.append(press(t('open'), () => openPalette(item)));
     if (item.kind === 'board') actions.append(press(t('open'), () => { location.href = '/' + locale + '/moodboard#saved=' + item.id; }));
+    if (item.kind === 'gradient') actions.append(press(t('open'), () => {
+      if (readGradientDraft() && !confirm(t('confirmOpen'))) return;
+      if (storeGradientDraft(item)) location.href = '/' + locale + '/gradient-studio';
+      else status.textContent = t('storage');
+    }));
     actions.append(
       press(t('export'), () => openExportDrawer(locale, item, repository!.getAsset)),
       press(t('duplicate'), async () => {

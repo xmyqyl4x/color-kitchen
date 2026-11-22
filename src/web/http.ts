@@ -12,6 +12,7 @@ import { imageToolsScreen } from './image-tools.js';
 import { colorToolsScreen } from './color-tools.js';
 import { previewToolsScreen } from './preview-tools.js';
 import { discoveryKinds, discoveryPage } from './discovery.js';
+import { gradientToolsScreen } from './gradient-tools.js';
 
 const knownScreens = new Set<string>(screenRoutes);
 const listings = { fonts: 'font' } as const;
@@ -22,7 +23,7 @@ const fileRoutes: Record<string, [string, string]> = {
   '/assets/source-sans-license.txt': ['../../../catalog/fonts/SourceSans3-OFL.txt', 'text/plain; charset=utf-8'],
   '/vendor/pdf-lib.js': ['../../../node_modules/pdf-lib/dist/pdf-lib.esm.min.js', 'text/javascript; charset=utf-8'],
 };
-const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/messages|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text|ui|collection-client|collection-text|export-drawer|image-tools-client|image-tools-text|color-tools-client|color-tools-text|preview-tools-client|preview-tools-text|discovery-client|discovery-text))\.js$/;
+const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/messages|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text|ui|collection-client|collection-text|export-drawer|image-tools-client|image-tools-text|color-tools-client|color-tools-text|preview-tools-client|preview-tools-text|discovery-client|discovery-text|gradient-tools-client|gradient-tools-text))\.js$/;
 
 async function webFile(request: Request, path: string) {
   const asset = Object.hasOwn(fileRoutes, path) ? fileRoutes[path] : undefined;
@@ -101,6 +102,9 @@ export function webHttp(dependencies: CatalogHttpDependencies) {
     });
     if ((screen === 'design-preview' || screen === 'tailwind') && !entry) return renderShell(request, {
       ...base, content: previewToolsScreen(locale, screen), module: '/src/web/preview-tools-client.js', index: true,
+    });
+    if ((screen === 'gradient-studio' || screen === 'gradient-steps') && !entry) return renderShell(request, {
+      ...base, content: gradientToolsScreen(locale, screen), module: '/src/web/gradient-tools-client.js', index: true,
     });
     const kind = Object.hasOwn(listings, screen) ? listings[screen as keyof typeof listings] : undefined;
     try {
