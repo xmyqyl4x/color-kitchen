@@ -54,7 +54,8 @@ export function parseGuideReply(raw: unknown): GuideSuggestion {
   }
 }
 
-export function guidePaletteEdit(suggestion: GuideSuggestion, selectedSwatchIds: readonly string[]): PaletteCommand {
+export function guidePaletteEdit(suggestion: GuideSuggestion, selectedSwatchIds: readonly string[]):
+  Extract<PaletteCommand, { type: 'apply-suggestion' }> {
   if (!selectedSwatchIds.length || selectedSwatchIds.length !== suggestion.colors.length ||
       new Set(selectedSwatchIds).size !== selectedSwatchIds.length) {
     throw new RangeError('Choose one distinct target for each color in the suggestion.');
