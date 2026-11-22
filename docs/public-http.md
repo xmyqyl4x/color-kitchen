@@ -26,3 +26,22 @@ Published content revalidates every time to reflect withdrawals immediately. Loc
 | `/api/v1/catalog/palette/forest-study?locale=de` | German detail after development seed |
 | `/api/v1/catalog/palette/missing-example?locale=en` | 404 with `not_found` |
 | `/api/v1/locales/ja` | 400 with `unsupported_locale` |
+
+## Color Guide
+
+Send an anonymous JSON POST to `/api/v1/guide` when the user submits the prompt. Browser clients use the same origin. The server limits the HTTP body to 16 KiB and verifies the exact shape.
+
+```json
+{
+  "submitted": true,
+  "locale": "fr",
+  "prompt": "Propose un texte plus foncé",
+  "history": [],
+  "shareSwatches": true,
+  "selectedColors": [{"space": "srgb", "components": [0.3, 0.4, 0.5], "alpha": 1}]
+}
+```
+
+The supported locales are `en`, `fr`, `es`, `pt` and `de`. Prompts allow 2,000 characters. History is optional with up to eight `{role,text}` turns (`user` or `assistant`, up to 1,000 characters each). Send at most twelve color values only with explicit `shareSwatches: true`. Success returns `{version,requestId,locale,data}`, with computed contrast assessments in `data.suggestion` when requested. Errors include `requestId` and `error.code` with `localAvailable: true`. A 429 carries `Retry-After` and `error.retryAt` when available. There are distinct errors for invalid requests, unavailable service, invalid provider output and provider timeouts. All replies use `Cache-Control: no-store`.
+
+Configure the optional server-side provider with `AI_GATEWAY_API_KEY`, `COLOR_KITCHEN_GUIDE_MODEL` (provider/model), `COLOR_KITCHEN_GUIDE_REQUESTS_PER_MINUTE` and `COLOR_KITCHEN_GUIDE_DAILY_UNITS`. Daily units conservatively budget the input and maximum output. Keep the key in the server environment. Hosted replies require configured credentials and budget. Local guidance remains available independently.
