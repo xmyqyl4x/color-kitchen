@@ -7,6 +7,8 @@ import { catalogHttp } from './public-catalog.js';
 import { operationsHttp } from './operations.js';
 import { httpServer } from './server.js';
 import { webHttp } from '../web/http.js';
+import { inquiryWebhook } from '../operations/inquiry-delivery.js';
+import { publicSupport } from '../operations/public-support.js';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error('Set DATABASE_URL to a migrated Color Kitchen database.');
@@ -48,13 +50,16 @@ const contactDays = Number(process.env.COLOR_KITCHEN_CONTACT_RETENTION_DAYS ?? 3
 if (!/^[a-z0-9_-]{1,48}$/i.test(keyId)) throw new Error('Invalid contact key identifier.');
 if (!Number.isInteger(contactDays) || contactDays < 1 || contactDays > 365) throw new Error('Invalid inquiry retention period.');
 const active = encryptKey && hmacKey ? { id: keyId, encryptKey, hmacKey } : undefined;
+const contact = active ? { keys: { active, resolve: (id: string) => id === active.id ? active : undefined },
+    retentionMs: contactDays * 86_400_000 } : undefined;
 const operations = operationsHttp({
-  withClient, measurement,
-  contact: active && { keys: { active, resolve: id => id === active.id ? active : undefined },
-    retentionMs: contactDays * 86_400_000 },
+  withClient, measurement, contact,
   consentKey: secret('COLOR_KITCHEN_CONSENT_KEY'), eventKey: secret('COLOR_KITCHEN_EVENT_KEY'),
 });
-const web = webHttp({ withClient, measurement });
+const web = webHttp({ withClient, measurement, adFrameUrl: process.env.COLOR_KITCHEN_AD_FRAME_URL });
+const delivery = process.env.COLOR_KITCHEN_INQUIRY_WEBHOOK;
+const deliver = delivery && contact ? inquiryWebhook({ url: delivery, token: process.env.COLOR_KITCHEN_INQUIRY_TOKEN ?? '',
+  deduplicationMs: Number(process.env.COLOR_KITCHEN_INQUIRY_DEDUP_MS ?? 0) }) : undefined;
 const server = httpServer(async request => {
   const { pathname } = new URL(request.url);
   if (pathname === guidePath) return guide(request);
@@ -64,10 +69,19 @@ const server = httpServer(async request => {
   process.env.COLOR_KITCHEN_ORIGIN ?? 'http://localhost:' + port);
 server.listen(port, process.env.HOST ?? '127.0.0.1', () => console.log('Color Kitchen HTTP server listening on port ' + port));
 let stopping = false;
+let deliveryTimer: ReturnType<typeof setTimeout> | undefined;
+async function pollInquiries() {
+  if (stopping || !contact || !deliver) return;
+  try { await withClient(client => publicSupport({ client, ...contact, provider: deliver }).deliverNext()); }
+  catch { console.error('Inquiry queue processing is temporarily unavailable.'); }
+  if (!stopping) deliveryTimer = setTimeout(pollInquiries, 5000).unref();
+}
+if (deliver) deliveryTimer = setTimeout(pollInquiries, 5000).unref();
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
     if (stopping) return;
     stopping = true;
+    clearTimeout(deliveryTimer);
     server.close(() => { void pool.end(); });
   });
 }
