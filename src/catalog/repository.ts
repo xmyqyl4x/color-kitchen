@@ -1,5 +1,5 @@
 import type { ClientBase } from 'pg';
-import { isLocale, type Locale } from '../model/locales.js';
+import { isLocale, locales, type Locale } from '../model/locales.js';
 
 export const catalogKinds = ['palette', 'gradient', 'color', 'font', 'template', 'policy'] as const;
 export type CatalogKind = typeof catalogKinds[number];
@@ -46,6 +46,25 @@ export async function getCatalogEntry(client: ClientBase, kind: CatalogKind, slu
     [kind, slug, locale],
   );
   return rows[0] ?? null;
+}
+
+export async function getCatalogRelease(client: ClientBase, kind: CatalogKind, slug: string) {
+  validateKindAndLocale(kind, 'en');
+  if (slug.length > 100 || !slugPattern.test(slug)) throw new RangeError('Invalid catalog slug.');
+  const { rows } = await client.query<CatalogEntry>(
+    `SELECT ${projection} FROM ck.published_catalog WHERE kind = $1 AND slug = $2`,
+    [kind, slug],
+  );
+  const head = rows[0];
+  if (!head) return null;
+  const localized = new Map(rows.map(row => [row.locale, row]));
+  if (rows.length !== locales.length || locales.some(locale => !localized.has(locale))) {
+    throw new Error('Published catalog release is missing translations.');
+  }
+  return {
+    itemId: head.itemId, revision: head.revision, effectiveAt: head.effectiveAt,
+    translations: Object.fromEntries(locales.map(locale => [locale, localized.get(locale)!])) as Record<Locale, CatalogEntry>,
+  };
 }
 
 type Cursor = Readonly<{ kind: CatalogKind; locale: Locale; query: string; rank: number; id: string }>;

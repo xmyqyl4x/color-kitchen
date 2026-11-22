@@ -14,6 +14,8 @@
     "test": "npm run build --silent && node --test \"dist/tests/*.test.js\""
   },
   "dependencies": {
+    "@formatjs/icu-messageformat-parser": "3.5.23",
+    "intl-messageformat": "12.2.0",
     "pg": "8.23.1"
   },
   "devDependencies": {
