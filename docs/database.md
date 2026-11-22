@@ -38,3 +38,9 @@ Theme revisions snapshot the selected swatches and role bindings. Their composit
 Catalog staff grants are independent of project ownership. A review records the exact catalog revision and edit version and references a publisher grant. The coverage view identifies missing locales on each draft or published revision. The migration records current publications as the history baseline while retaining the existing public IDs, URLs, revisions and query projection.
 
 Publication, review and audit history is append-only. Retain sealed revisions referenced by publication history. An unreviewed, unsealed draft can be removed with its dependent entries under a staff retention process. Audit entries hold actor, action and revision metadata. Retention changes for publication and audit records require an owner-approved migration and policy.
+
+## Connector and extension persistence
+
+Connector grants store the verified actor, client, expiry and revocation metadata with an explicit set of projects in one organization. Keep credentials and tokens with the identity provider. The current-grant view filters expired, future and revoked grants. Reads must also check the actor's current project membership.
+
+Chrome uses its own browser profile storage for the versioned selected sRGB swatches and capture mode. The version-one fixture migrates hexadecimal color strings to numeric swatches. The codec preserves only these fields.
