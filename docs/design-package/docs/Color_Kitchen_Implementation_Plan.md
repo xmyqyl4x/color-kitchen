@@ -2,7 +2,7 @@
 
 Ship one containerized web application in two live releases. Put color mathematics and editing rules in a deterministic TypeScript package, application workflows in use cases, and storage behind narrow interfaces. The same use case can serve several clients. PostgreSQL is the system of record for hosted data in both releases. Use the existing database and identity boundaries after the read-only review in the companion database design. Browser-local creative documents have their own persistence boundary.
 
-The project repository contains only a README at the reviewed commit. The technology choices here are proposed defaults until the actual platform's migration system, shared identity service, data owners and deployment environment are identified. The eight steps in the earlier design are now organized into two releases. This plan describes work to implement and the evidence that will establish completion. [Reviewed repository snapshot](https://github.com/xmyqyl4x/color-kitchen/tree/e30ea886dfc07fa05067c551ffeabe5b863d9140)
+The repository contains the design package and a browser prototype. The technology choices are proposed defaults pending verification of the migration system, shared identity, data owners and deployment environment. The initial repository snapshot provides the evidence baseline. [Reviewed repository snapshot](https://github.com/xmyqyl4x/color-kitchen/tree/e30ea886dfc07fa05067c551ffeabe5b863d9140)
 
 ## Ownership and dependency direction
 
@@ -12,7 +12,7 @@ The project repository contains only a README at the reviewed commit. The techno
 | Data access | Typed records, domain mapping, query projections, repositories, version heads and scoped transactions. Adapter for platform subjects and approved game summaries. | Accept a use-case transaction or scope and return typed results. Tests use a disposable PostgreSQL matching the verified production major. Browser storage adapters use browser fixtures. |
 | Domain | Color parsing, harmony, locks, alpha, gamut and contrast, gradients, theme role bindings, publication rules, project invariants. | Pure functions or small typed objects. Inject clocks and seeds when a result depends on them. Tests cover numeric limits, invalid state and repeatability without servers. |
 | Application services | GeneratePalette, ApplyContrastFix, ExtractImagePalette, SaveLocalDocument, FindPublishedItems, SubmitInquiry, AskColorGuide, SaveThemeRevision, ReleaseTheme, PublishCatalogRevision. | Services own a complete command or query, authorization decision, transaction boundary and error result. They depend on data and provider interfaces. |
-| APIs | Public HTTP reads and submissions, authenticated platform APIs, typed browser-local interfaces, Phase 2 read-only connector tools and extension handoff. | Parse at the edge. Pass a principal, locale and typed input into one use case. Return a stable error code and a data projection. Verify browser, HTTP and connector contracts before the UI. |
+| APIs | Public HTTP reads and submissions, authenticated platform APIs, typed browser-local interfaces, Phase 2 read-only connector tools and extension handoff. | Parse at the edge. Pass a principal, locale and typed input into one use case. Return a stable error code and a data projection. Verify browser, HTTP and connector contracts before accepting the dependent UI. |
 | Presentation | Localized public pages, admin forms, developer portal, mobile views, extension popup and AI client output. | Views own interaction, focus and rendering. They submit commands through the applicable interface. A UI test exercises real supported entry points. |
 | Infrastructure | Identity provider, scoped OAuth grants, database pool, local storage, web workers, approved fonts, model provider, consent provider, advertising, contact notification, scheduler and deployment. | Wire concrete adapters in one composition root. Bound time, retries, payload size and sensitive fields. Test provider outages and recovery. |
 
@@ -34,7 +34,7 @@ These are proposed contract shapes. Pin names, request limits, status codes and 
 | Browser workspace API | generate(document, options), checkPair(pair, backing), sampleGradient(spec, count), exportDocument(document, format), saveLocal(document). | A typed result or localized error key. Inputs and source pixels remain local. Element event handlers contain no alternate calculation. |
 | Project API, POST /api/v1/projects/{id}/assets/{assetId}/revisions | Authenticated project scope, validated roles/colors, operation ID, expected head. | Return stored revision and ETag. Repeat identical operation returns the first result. Failed If-Match gives 412. Reused operation ID with different payload gives 409. |
 | Release and staff publishing APIs | Authenticated owner or separate staff grant, target revision, expected current version, audience/intent and request key. | Store the command receipt, release change and audit in one transaction. A matching replay returns the original result. Failed If-Match returns 412, changed input under the same key or a conflicting transition returns 409. An owner can re-release a withdrawn revision with a fresh key and explicit audience confirmation. |
-| Connector read tools | Published public query, or an authorized selected project plus its active release. | Return bounded structured tokens, schema version, revision and display labels. Validate issuer, intended resource, expiry, scope and live membership. A revoked or withdrawn release is inaccessible. |
+| Connector read tools | Published public query, or an authorized selected project plus its active release. | For an anonymous theme request use the release ID. For a protected request require both project and theme asset IDs. Return bounded versioned tokens. Validate issuer, audience, expiry, scope, grant and current membership. Theme reads use `Cache-Control: no-store`. Withdrawal, supersession and grant revocation take effect on the first new request after the change commits. |
 | Extension handoff | Explicit capture on the active tab, then user-selected colors inside a versioned bounded transfer. | Open Studio with validated swatches. Restricted pages display a local explanation. The sender's URL, pixels and browsing history are excluded. |
 
 Use 400 for syntactically invalid input, 422 for semantic validation failure, 401 for missing credentials, 403 for a denied operation on an accessible object, and 404 when revealing a private object's existence would disclose it. Apply one policy consistently to comparable endpoints. Use request IDs in operational errors, structured field pointers for validation, and client-localized messages. Public catalog responses may be conditionally cached. Private project results, grant decisions and chat use private or no-store caching as appropriate.
@@ -64,7 +64,7 @@ Document changes with their module. A PR that changes an endpoint includes the c
 | UI and integration tests | Vitest or the platform's existing runner, real PostgreSQL fixture, Playwright and axe-core for automated checks, followed by manual assistive technology checks. | Record runner versions and browser images. Use fixtures and injected clocks/seeds for stable test outcomes. |
 | Container and integrations | Docker or compatible OCI runtime, Compose for development, existing registry and TLS gateway. Use a supported, pinned MCP SDK and Chrome Manifest V3. | Application owner keeps runtime and provider matrix, environment variables, SBOM and upgrade cadence with the source. |
 
-The technology register lives in docs/technology.md with component, purpose, actual pinned version, license, owner, consuming modules, security support policy and last verification. Proposed defaults in this document identify the baseline to validate. The implementation repository becomes authoritative once versions are installed and tested.
+The first foundation PR creates a technology register at `docs/technology.md` with component, purpose, actual pinned version, license, owner, consuming modules, security support policy and last verification. Proposed defaults in this document identify the baseline to validate. The implementation repository becomes authoritative once versions are installed and tested.
 
 # Test driven development and traceability
 
@@ -118,11 +118,11 @@ The production deployable is a stateless OCI web image. Build in separate depend
 
 Phase 1 prerequisites are permission to inspect the existing database, catalog and font rights, the five translated content sets, a working hosted model/contact path, production domain/TLS and an approved advertising/consent configuration. Attach a real production journey, locale crawl, privacy trace, artifact exports, classification of any defects, image digest, schema version and rollback result. Mark complete only once the entire specified public website is usable.
 
-Phase 2 additionally requires project/account mapping with the platform identity owner, staff permissions, confirmed release visibility rules, OAuth client registration and scope, an authorized test tenant, extension publisher access and a supported device/browser matrix. Attach owner/editor/viewer journeys, staff publication and rollback, current-member and revoked-connector results, mobile-device evidence and a successful extension installation from the agreed distribution channel. Confirm Phase 1 regression checks on the shared production release. Attach approved live evidence for each of the six source contracts and the player journey in the agreed game client. Keep full Phase 2 acceptance open for every outstanding binding or missing journey.
+Full Phase 2 acceptance additionally requires project/account mapping with the platform identity owner, staff permissions, confirmed release visibility rules, OAuth client registration and scope, an authorized test tenant, extension publisher access and a supported device/browser matrix. Attach owner/editor/viewer journeys, staff publication and rollback, current-member and revoked-connector results, mobile-device evidence and a successful extension installation from the agreed distribution channel. Confirm Phase 1 regression checks on the shared production release. Attach approved live evidence for each of the six source contracts and the player journey in the agreed game client. Keep full Phase 2 acceptance open for every outstanding binding or missing journey.
 
 # Pull request register
 
-The following register translates the design into independently reviewable changes. Read each gate in order within its phase. The gate order defines dependencies even where several small PRs within a gate can be developed concurrently. The last PR of each phase is a working release with recorded production evidence.
+The register groups 68 work items by layer and phase. Its IDs support traceability. A work item can share a PR with a related item when their prerequisites, acceptance checks and rollback impact are reviewable together. The release items record production evidence.
 
 | Review gate | Phase 1 | Phase 2 |
 | --- | --- | --- |
@@ -136,7 +136,7 @@ The following register translates the design into independently reviewable chang
 
 ## How to schedule and review these PRs
 
-The backlog contains 68 PRs: 41 in Phase 1 and 27 in Phase 2. Each numbered heading is one proposed pull request. Each entry names its requirement, direct dependencies, bounded task list, first failing test and definition of done. Within each phase the gates run in order. **Every PR implicitly depends on every PR in the preceding gate.** The dependency line lists additional or particularly relevant predecessors. Entries in the same gate can run in parallel unless they explicitly depend on one another. The deployment PRs identify which component may go live under the team's normal approval process. Phase 2 web/connector and store distribution have separate release checks.
+The backlog contains 68 work items: 41 in Phase 1 and 27 in Phase 2. Each heading names its requirements, direct prerequisites, bounded tasks, first failing test and definition of done. Schedule by the listed prerequisites. A gate groups work by layer and does not create additional dependencies. A dependent work item can start against an agreed interface and fixture and must verify the real dependency before its integration is accepted. For the first vertical slice, exercise generate, lock, contrast and CSS export through the local workspace before tying it to hosted services. Deploy Phase 2 web/connector and store distribution on their own verified prerequisites.
 
 Start each behavior change by recording a failing test against the desired result, implement the smallest change that makes it pass, then refactor. For a migration, capture the failing constraint, upgrade or restore check against an isolated database first. For an operational PR, exercise the failure in staging and retain its evidence. A merged PR includes its fixtures, trace IDs and relevant schema or interface documentation. A frontend PR can assemble existing services through the approved API and must not create SQL, duplicate business rules or quietly add another endpoint. A layer defect returns to its owning layer for a focused prerequisite fix.
 
@@ -150,11 +150,11 @@ Screen numbers refer to the original 20-screen mockup set. Screens 01–16 and 1
 
 Scope and work — X-DATA, X-TDD, X-OPS. Before any migration on a shared system, run the companion read-only PostgreSQL inventory on the authorized target. Record matching migration heads, schema ownership, accounts and RBAC, relevant relations, dependencies/extensions and backup/restore ownership. Resolve or explicitly block each potential conflict with the system owner. Establish repeatable local/test provisioning, migration ordering and the CI job that upgrades a blank database and a previous fixture. Set UTC timestamp and identifier conventions. This is the only bootstrap work bundled into the initial database PR.
 
-Depends on — Phase 1 entry. First failing check — A clean checkout cannot provision the baseline and safely rerun the migration runner. Done when — CI records the schema revision after clean and repeat runs, documents restoration and includes the verified inventory/reuse map for shared deployment. Local development can proceed on an isolated schema while an unknown shared binding remains open.
+Depends on — Phase 1 entry. First failing check — A clean checkout cannot provision the baseline and safely rerun the migration runner. Done when — CI records the schema revision after clean and repeat runs against disposable PostgreSQL and documents restoration. The shared deployment check in P1-40 separately requires the authorized inventory, migration owner and verified reuse map.
 
 #### P1-02 · Model public catalog content and five-locale releases
 
-Scope and work — PUB-02, PUB-09, PUB-10, PUB-14, PUB-17, X-LANG, X-DATA. Define the proposed `ck.catalog_item`, `ck.catalog_revision` and `ck.catalog_text` or reuse an approved equivalent. Include type-specific payloads, source/license metadata, publication pointers and localized rows. Represent stable IDs independently of translated labels, public slugs and aliases. Include public metadata and legal page versions in the localized catalog records. Constrain locale codes to en/fr/es/pt/de using the approved schema convention. A publish-time check requires exactly one current text row per required locale, plus normal uniqueness and lookup indexes. UI translations compile from version-controlled bundles outside SQL.
+Scope and work — PUB-02, PUB-09, PUB-10, PUB-14, PUB-17, X-LANG, X-DATA. Define the proposed `ck.catalog_item`, `ck.catalog_revision` and `ck.catalog_text` or reuse an approved equivalent. Include type-specific payloads, source/license metadata, publication pointers and localized rows. Assign stable item IDs and locale-neutral slugs. Version the four policy notices with all five localized bodies and a shared effective date. Include public metadata and legal page versions in the localized catalog records. Constrain locale codes to en/fr/es/pt/de using the approved schema convention. A publish-time check requires exactly one current text row per required locale, plus normal uniqueness and lookup indexes. UI translations compile from version-controlled bundles outside SQL.
 
 Depends on — P1-01. First failing check — Two released entries can claim the same locale and public slug, or a translated content row references a missing revision. Done when — Constraints reject the invalid fixtures, an upgrade preserves the previous fixture and example public records join correctly across all locales.
 
@@ -162,7 +162,7 @@ Depends on — P1-01. First failing check — Two released entries can claim the
 
 Scope and work — PUB-02, PUB-08, PUB-17, X-DATA, X-PRIV. Use `ck.contact_request` as the idempotent intake/delivery queue, with a unique replay key, delivery/status fields, retry state and expiry. Model coarse public popularity counters. Prefer an available gateway/provider shared limiter for time-bounded service budgets; add a dedicated store only when the deployment inventory shows no equivalent. Configure data classes, indexes and expiration. Keep source images, palette drafts and conversation bodies out of operational counters. Use the consent platform's supported evidence path where applicable.
 
-Depends on — P1-01. First failing check — Duplicate delivery keys create two queue records or an expired queue record survives its retention job. Done when — Migration tests verify queue deduplication and expiry and the retention inventory names the owner of each stored field.
+Depends on — P1-01, P1-02. First failing check — Duplicate delivery keys create two queue records or an expired queue record survives its retention job. Done when — Migration tests verify queue deduplication and expiry and the retention inventory names the owner of each stored field.
 
 #### P1-04 · Version browser document and asset storage
 
@@ -182,7 +182,7 @@ Depends on — P1-02. First failing check — A seed rerun duplicates a collecti
 
 Scope and work — X-LANG, PUB-17. Implement two separately tested adapters. Compile version-controlled UI messages, instructions and errors into en/fr/es/pt/de bundles with CI checks for placeholders, plurals and complete key coverage. Use SQL repositories for five localized public text rows per catalog/policy revision, including titles, descriptions and metadata. Publish a content/locale release only with validated coverage in both sources. Phase 2 administrators edit catalog and policy translations; changing compiled UI copy goes through the normal reviewed code and build pipeline. Preserve authored typeface names, HEX values and code literals. Package a known-good released translation bundle for recovery.
 
-Depends on — P1-02. First failing check — The Portuguese consent text loses a substitution parameter or the German bundle omits the contrast error. Done when — The importer rejects the incomplete release without changing the published pointer, and all five complete fixtures round-trip.
+Depends on — P1-02. First failing check — The Portuguese consent message loses a parameter or a policy revision omits the German body. Done when — CI rejects a broken UI bundle and the publisher independently rejects incomplete content without moving its published pointer. All five complete content variants round-trip.
 
 #### P1-07 · Implement the operational repositories
 
@@ -202,11 +202,11 @@ Depends on — P1-04. First failing check — A failed blob write leaves a board
 
 Scope and work — PUB-04, PUB-06, X-ACC. Parse supported color inputs, preserve original precision and alpha, calculate named sRGB fallbacks and gamut warnings, and evaluate foreground/background pairs over an explicit backing surface. Define AA and AAA results, text categories, pair-specific fix options and helper operations for tints, shades and harmonies.
 
-Depends on — Gate 2. First failing check — A ratio just below 4.5 passes after rounding, or a translucent pair is assessed without a defined opaque backdrop. Done when — Black/white, identical colors, threshold, transparency and wide-gamut fixtures pass with no browser or database dependency.
+Depends on — Phase 1 entry. First failing check — A ratio just below 4.5 passes after rounding, or a translucent pair is assessed without a defined opaque backdrop. Done when — Black/white, identical colors, threshold, transparency and wide-gamut fixtures pass with no browser or database dependency.
 
 #### P1-10 · Implement palette generation and document revisions
 
-Scope and work — PUB-01, PUB-05, PUB-16. Implement 2–12 swatches, deterministic seeds, harmony/constraint modes, adjustment, locks, add/remove/duplicate/reorder, stable IDs, role assignment, and atomic undo/redo transactions. Preserve locks and role identity across switches and generation.
+Scope and work — PUB-01, PUB-05, PUB-16. Implement 2–12 swatches, deterministic seeds, harmony/constraint modes, adjustment, locks, add/remove/duplicate/reorder, stable IDs, role assignment, and atomic undo/redo transactions. Preserve locked values during automatic edits. Require role reassignment or removal before deleting a referenced swatch. Undo restores the prior document snapshot.
 
 Depends on — P1-09. First failing check — Generation with all colors locked changes a value or reordering changes the color assigned to text. Done when — Invariant tests pass across generation modes and undo restores the complete prior document.
 
@@ -242,7 +242,7 @@ Depends on — P1-05. First failing check — An unsupported accented grapheme, 
 
 #### P1-16 · Define catalog ranking and locale resolution
 
-Scope and work — PUB-02, PUB-09, PUB-10, PUB-14, X-LANG. Define typed facets, family/name/HEX matching, deterministic pagination, Featured and Popular sorting using a published window and qualifying events, plus transparent cold-start behavior. Define explicit locale selection precedence, stable item IDs and fallback behavior for unsupported locale requests.
+Scope and work — PUB-02, PUB-09, PUB-10, PUB-14, X-LANG. Define typed facets, family/name/HEX matching, deterministic pagination, Featured and Popular sorting using the PUB-02 window, published-palette threshold and qualifying consented opens, with an explicit Featured fallback. Define explicit locale selection precedence, stable item IDs and fallback behavior for unsupported locale requests.
 
 Depends on — P1-05, P1-06, P1-07. First failing check — Zero activity is reported as a popular vote or selecting French is overwritten by browser language on the next view. Done when — Deterministic fixture order, required-locale behavior and language switching tests pass. A missing promised translation remains a release error.
 
@@ -280,7 +280,7 @@ Depends on — P1-06, P1-07. First failing check — Rejecting optional tracking
 
 #### P1-22 · Deliver lossless backup, safe sharing and machine-readable exports
 
-Scope and work — PUB-01, PUB-07, PUB-11, PUB-12, PUB-16, X-DATA, X-PRIV. Implement versioned document/collection JSON, bounded palette share fragments, HEX/RGB/HSL/OKLCH lists, palette CSS variables, gradient CSS and Tailwind exports. Distinguish share data from full backups, include referenced colors, validate imports before mutation and show copied content when clipboard access fails.
+Scope and work — PUB-01, PUB-07, PUB-11, PUB-12, PUB-16, X-DATA, X-PRIV. Implement versioned document/collection JSON, palette share fragments bounded to 4 KiB, HEX/RGB/HSL/OKLCH lists, palette CSS variables, gradient CSS and Tailwind exports. Distinguish share data from full backups, include referenced colors, validate imports before mutation and show copied content when clipboard access fails.
 
 Depends on — P1-08, P1-09, P1-10, P1-11, P1-14, P1-17. First failing check — A share link leaks the image filename or an invalid role reference partially mutates a saved collection. Done when — Round-trip, malformed, oversized and old-version fixtures pass and opt-in assets are carried or explicitly listed in backups.
 
@@ -328,7 +328,7 @@ Depends on — P1-19, P1-22, P1-23. First failing check — A canceled job emits
 
 Scope and work — X-LANG, X-ACC, PUB-17. Implement home (screen 01), Create/Explore/Browser tools navigation, accessible footer, skip links, focus restoration and language selection. Localize titles, help and errors while preserving the active document. Render indexable public pages and alternate language links. Pre-release navigation identifies extension availability accurately.
 
-Depends on — P1-24, P1-27, P1-28. First failing check — Changing from Spanish to German loses the palette or a keyboard user cannot reach the first tool at 320 CSS pixels. Done when — Real browsers exercise all five home routes, correct language metadata, reflow and basic keyboard/touch navigation.
+Depends on — P1-04, P1-06. First failing check — Changing from Spanish to German loses the palette or a keyboard user cannot reach the first tool at 320 CSS pixels. Done when — Real browsers exercise all five home routes, correct language metadata, reflow and basic keyboard/touch navigation.
 
 #### P1-30 · Build Palette Studio on desktop and mobile
 
@@ -394,7 +394,7 @@ Depends on — P1-24, P1-26, P1-29. First failing check — Rejecting optional t
 
 #### P1-40 · Rehearse migrations, release and rollback in staging
 
-Scope and work — X-TDD, X-DATA, X-LANG, X-ACC, X-PRIV, X-OPS. Run the full public acceptance suite against the deployed release candidate using representative PostgreSQL and browser-storage fixtures. Check all five locales, stage-only approved vendor integrations, output readers, real HTTP behavior, assistive technology, 320px reflow, 400% zoom, performance with ads and no private egress. Rehearse restoration using non-production data.
+Scope and work — X-TDD, X-DATA, X-LANG, X-ACC, X-PRIV, X-OPS. Require a verified shared PostgreSQL destination, migration owner and reuse map before rehearsal against its staging counterpart. Run the full public acceptance suite on the release candidate with representative PostgreSQL and browser-storage fixtures. Check all five locales, stage-only approved vendor integrations, output readers, real HTTP behavior, assistive technology, 320px reflow, 400% zoom, performance with ads and no private egress. Rehearse restoration using non-production data.
 
 Depends on — P1-29 through P1-39. First failing check — A deliberately incomplete locale bundle, failing parser fixture or private ad request must block promotion. Done when — A versioned evidence report identifies the complete candidate, database and content versions, measured global checks, owners and a successfully exercised rollback path.
 
@@ -425,23 +425,23 @@ Use the Phase 1 public contracts as the compatibility baseline. Project membersh
 
 Scope and work — DEV-01, ADM-01, X-DATA, X-PRIV. Map verified platform subject and organization IDs, then add Color Kitchen-owned project and membership records (proposed `ck.project` and `ck.project_member`) only where the platform provides no equivalent. Define owner, editor and viewer roles, scoped uniqueness, inactive membership and lifecycle rules. Keep staff catalog roles distinct from developer roles.
 
-Depends on — P1-41. First failing check — The same member gains an unintended role in another project or the last active owner may be removed without a replacement. Done when — Upgrade fixtures preserve public data, enforce the ownership model and document the platform-to-Color-Kitchen ID boundary.
+Depends on — P1-01, P1-02, P1-03. First failing check — The same member gains an unintended role in another project or the last active owner may be removed without a replacement. Done when — Upgrade fixtures preserve public data, enforce the ownership model and document the platform-to-Color-Kitchen ID boundary.
 
 #### P2-02 · Model game theme assets and immutable releases
 
-Scope and work — DEV-01, AI-01, X-DATA. Define project-owned assets, append-only revisions and release pointers (proposed `ck.asset`, `ck.asset_revision`, `ck.asset_release`). Store validated game-theme roles/tokens and provenance with a versioned palette reference or frozen snapshot. Bind asset/project/revision through referential constraints and record optimistic concurrency tokens. Default release audience to project. Persist current release, explicit public audience and withdrawal state independently from immutable revision content. Add transactional `ck.command_receipt` or its verified shared equivalent. A partial unique key permits one active release per asset while retaining every withdrawn release, including repeated publication of the same saved revision.
+Scope and work — DEV-01, AI-01, X-DATA. Define project-owned assets, append-only revisions and release pointers (proposed `ck.asset`, `ck.asset_revision`, `ck.asset_release`). Store validated game-theme role keys and referenced colors as a frozen snapshot with optional source provenance. Bind asset/project/revision through referential constraints and record optimistic concurrency tokens. Default release audience to project. Persist current release, explicit public audience and withdrawal state independently from immutable revision content. Define transactional command receipts and the shared audit event format or their verified platform equivalents. A partial unique key permits one active release per asset while retaining every withdrawn release, including repeated publication of the same saved revision.
 
 Depends on — P2-01. First failing check — A release in project A points to a revision in B or an exported release changes when a later draft is edited. Done when — Cross-project references fail and immutable releases remain readable through the migration and current schema.
 
 #### P2-03 · Model catalog drafts, translations, approval and audit
 
-Scope and work — ADM-01, X-DATA, X-LANG, X-PRIV. Extend Phase 1 catalog records with proposed `ck.catalog_item`, `ck.catalog_revision`, `ck.catalog_text` and an append-only `ck.audit_event` or equivalent reused tables. Track language coverage, reviewer state, publish/rollback pointers and revision history. Backfill existing public content as the initial published revision, preserving URLs and slugs.
+Scope and work — ADM-01, X-DATA, X-LANG, X-PRIV. Extend Phase 1 catalog records with staff review metadata. Reuse the Phase 1 catalog tables and the P2-02 audit and command receipt contracts. Track language coverage, draft edit versions, publish/rollback pointers and revision history. Backfill existing public content as the initial published revision, preserving URLs and slugs.
 
-Depends on — P1-02, P2-01. First failing check — Migrating a published Spanish page changes its public ID or moving a publish pointer loses history. Done when — Before/after public fixtures match across five languages and draft/public/audit retention rules are documented.
+Depends on — P1-02, P2-02. First failing check — Migrating a published Spanish page changes its public ID or moving a publish pointer loses history. Done when — Before/after public fixtures match across five languages and draft/public/audit retention rules are documented.
 
 #### P2-04 · Model scoped grants and extension-local state
 
-Scope and work — AI-01, EXT-01, X-DATA, X-PRIV. Map grant metadata to the verified identity provider and define the minimum local binding to approved project/assets, release visibility, scopes, expiry and revocation. Use existing token storage where supported. Bind the required `project:read` scope to selected projects; membership is checked again at request time. Version the extension's own storage for user-selected values/settings. Keep raw browser pages and private game records out of these stores.
+Scope and work — AI-01, EXT-01, X-DATA, X-PRIV. Map grant metadata to the verified identity provider and define the grant's actor, client, selected project IDs, scope, expiry and revocation state. Use existing token storage where supported. Bind the required `project:read` scope to selected projects; membership is checked again at request time. Version the extension's own storage for user-selected values/settings. Keep raw browser pages and private game records out of these stores.
 
 Depends on — P2-01, P2-02. First failing check — A revoked grant still resolves as current or upgrading an extension fixture drops its chosen palette. Done when — Grant lookup/expiry constraints and local extension migration fixtures pass with an inventory that separates browser and server state.
 
@@ -475,13 +475,13 @@ Depends on — P2-05. First failing check — The provider returns an out-of-pro
 
 #### P2-09 · Define developer permissions and the theme lifecycle
 
-Scope and work — DEV-01, X-PRIV. Define owner/editor/viewer permissions. Viewers can read committed theme revisions in the portal, editors can author revisions and owners control membership and releases. Only an owner can publish or withdraw: a new release defaults to project audience and a public release requires explicit owner confirmation. Define theme role requirements, permitted asset formats, revision conflict rules, release compatibility and restoration from a prior revision. Restoring creates a new auditable event and retains the former release.
+Scope and work — DEV-01, X-PRIV. Define owner/editor/viewer permissions. Viewers can read committed theme revisions in the portal, editors can author revisions and owners control membership and releases. Only an owner can publish or withdraw: a new release defaults to project audience and a public release requires explicit owner confirmation. Use the six role keys from DEV-01 for theme release. Restoring a prior revision creates a new draft revision with the source recorded. Archival withdraws active releases, and restoring an archive leaves them withdrawn.
 
 Depends on — P2-05, P1-10. First failing check — An editor publishes or withdraws, a new release is public without confirmation, or an edit retroactively changes the released token set. Done when — Table-driven tests exercise each role/action pair, stale revision and cross-project denial independently of database or UI.
 
 #### P2-10 · Define administrative publication and translation rules
 
-Scope and work — ADM-01, X-LANG, X-PRIV. Define who can draft, review and publish catalog revisions, how approval is invalidated by subsequent edits and how rollback works. Make complete en/fr/es/pt/de text, license/provenance and valid message placeholders release preconditions. Model explicit localizable versus invariant fields.
+Scope and work — ADM-01, X-LANG, X-PRIV. Define editor and publisher permissions and rollback. Treat publisher approval and publication as one ordered transaction. Use the reviewed draft version as a precondition, requiring a fresh review after any concurrent change. Make complete en/fr/es/pt/de content, policy effective dates and applicable license/provenance release preconditions. Keep UI message key and placeholder validation in the code pipeline.
 
 Depends on — P2-06, P1-16. First failing check — A previously approved item can be published after its German translation or license changes without renewed validation. Done when — State transition, role, version, missing-locale and invariant-token fixtures all pass using deterministic inputs.
 
@@ -559,7 +559,7 @@ Depends on — P2-17. First failing check — A viewer sees a working publish ac
 
 #### P2-22 · Build the site administration portal
 
-Scope and work — ADM-01, X-LANG, X-ACC. Build catalog/revision lists, multilingual editor, missing-key/placeholder reports, change comparison, approval/publish/rollback and searchable audit history. Preserve entered translations and show conflicts with the current revision. Display draft status and the actual published version on each edit view.
+Scope and work — ADM-01, X-LANG, X-ACC. Build catalog/revision lists, a multilingual content editor, missing-locale and stale-source reports, change comparison, approval/publish/rollback and searchable audit history. Preserve entered translations and show conflicts with the current revision. Display draft status and the actual published version on each edit view.
 
 Depends on — P2-18. First failing check — An incomplete Portuguese revision can be published from the UI, or a pending edit erases another editor's newer text. Done when — A staff author and authorized reviewer complete draft-to-publication and rollback across five locales; their visible history matches the immutable audit record.
 
@@ -587,13 +587,13 @@ Depends on — P2-21 through P2-24. First failing check — A cross-project leak
 
 Scope and work — DEV-01, ADM-01, MOB-01, AI-01, X-OPS. Apply additive migrations; promote compatible services and clients in dependency order. Enable portal/connector access for an authorized canary, run tenant-isolation and public-website smoke tests, then widen rollout. Bind only named verified providers and keep fixture previews visibly labeled wherever live data is unavailable.
 
-Depends on — P2-25. First failing check — A staging rollout rehearsal must disable connector access or revert portal/content versions while the prior public release remains usable. Done when — Production checks pass in all locales, the external host reads only an authorized released theme, revocation works, and the owner-approved real-game checks cover all six source families and a player journey consuming the released theme. If a binding is unavailable, any verified portal or connector rollout has component-only status and full Phase 2 remains open.
+Depends on — P1-41, P2-25. First failing check — A staging rollout rehearsal must disable connector access or revert portal/content versions while the prior public release remains usable. Done when — Production checks pass in all locales, the external host reads only an authorized released theme, revocation works, and the owner-approved real-game checks cover all six source families and a player journey consuming the released theme. If a binding is unavailable, any verified portal or connector rollout has component-only status and full Phase 2 remains open.
 
 #### P2-27 · Publish and verify Chrome distribution
 
 Scope and work — EXT-01, X-PRIV, X-OPS. Submit the reviewed extension through the approved store account, retain the reviewed build fingerprint and handle the store's review outcome. After approval, link the verified listing, install from the store and smoke-test capture, denial and website handoff. Document the recovery path for a bad version, including delisting or an expedited corrective version as available.
 
-Depends on — P2-25, P2-26. First failing check — A missing/unapproved or mismatched listing never activates the public install link. Done when — The actual approved listing installs the expected build, smoke tests pass, and the phase owner records browser distribution as live. Record full Phase 2 completion only after the verified distribution, all six approved real-game bindings and the player journey from P2-26 pass. While store approval or game access is pending, report verified components separately.
+Depends on — P1-41, P2-24 and the extension rehearsal in P2-25. First failing check — A missing/unapproved or mismatched listing never activates the public install link. Done when — The actual approved listing installs the expected build, smoke tests pass, and the phase owner records browser distribution as live. Record full Phase 2 completion only after the verified distribution, all six approved real-game bindings, the player journey and the web/connector criteria from P2-26 pass. While store approval or game access is pending, report verified components separately.
 
 ### Phase 2 release evidence
 

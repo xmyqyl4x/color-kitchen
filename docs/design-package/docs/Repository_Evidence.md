@@ -1,5 +1,7 @@
 # Repository and schema evidence
 
+This note records the evidence used for the initial design. The current checkout also contains the design package and browser prototype. Current release dependencies are tracked in the [design review](../REVIEW.md).
+
 The installed GitHub repository search returned `xmyqyl4x/color-kitchen` for `color-kitchen` and zero results for `color-kitchen112026`. The repository returned one branch, `main`, with commit `e30ea886dfc07fa05067c551ffeabe5b863d9140`, dated 21 November 2026 UTC. Its complete recursive Git tree at `489ba31579693ed5592b568c8e98f36b15a4f749` contained a single 16-byte `README.md`. The entire README is its project heading. It contains no reference to a shared database or another application. [Repository snapshot](https://github.com/xmyqyl4x/color-kitchen/tree/e30ea886dfc07fa05067c551ffeabe5b863d9140) · [README at the verified revision](https://github.com/xmyqyl4x/color-kitchen/blob/e30ea886dfc07fa05067c551ffeabe5b863d9140/README.md) · [Git tree](https://api.github.com/repos/xmyqyl4x/color-kitchen/git/trees/489ba31579693ed5592b568c8e98f36b15a4f749?recursive=1)
 
 The project-specific local files consist of design documents, a standalone workspace mockup and its review/build artifacts. Searches of the scoped working directory for migration paths, SQL and Prisma or Drizzle schema definitions found none from an existing application. The November design's suggested PostgreSQL records and the current schema-inventory script are proposals and review aids. Neither supplies the deployed schema.
