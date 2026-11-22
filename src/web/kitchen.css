@@ -339,6 +339,17 @@ button.template-block:focus-visible { z-index: 1; outline-color: white; box-shad
   font: 1.7rem system-ui, sans-serif; white-space: pre-wrap; overflow-wrap: anywhere; }
 #type-variants section { margin-top: .8rem; padding: .7rem; border: 1px solid var(--edge); border-radius: .45rem; }
 .type-decoration { font-size: 1.3rem; overflow-wrap: anywhere; white-space: pre-wrap; }
+.guide-ui label { margin-block: .55rem; }
+.guide-ui textarea { width: 100%; display: block; margin-top: .3rem; padding: .6rem; font: inherit; border: 1px solid var(--strong-edge); border-radius: .45rem; }
+.guide-ui p + p { margin-top: .45rem; }
+.guide-swatches, .guide-assignments { display: flex; flex-wrap: wrap; gap: .45rem .7rem; margin-block: .65rem; }
+.guide-assignments label { flex: 1 1 9rem; }
+.guide-history { list-style: none; padding: 0; }
+.guide-history li { padding: .65rem .8rem; border-radius: .45rem; border: 1px solid var(--edge); margin-block: .5rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.guide-history [data-turn=user] { background: var(--selected); }
+.guide-chip { display: inline-flex; align-items: center; gap: .35rem; }
+.guide-chip > span { width: 1.3rem; height: 1.3rem; border: 1px solid var(--edge); border-radius: .2rem; }
+.guide-ui .studio-actions { margin-top: .55rem; }
 @media (max-width: 767px) { .image-tools-layout { grid-template-columns: minmax(0, 1fr); } }
 
 @media (max-width: 767px) {
