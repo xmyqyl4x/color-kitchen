@@ -290,8 +290,8 @@ languageSelect.addEventListener('change', () => {
   renderText(pending.get(selectedLanguage()) ?? translationAt(draft, selectedLanguage()));
   renderCurrent();
 });
-translation.addEventListener('input', () => {
-  if (!draft || draft.sealedAt) return;
+translation.addEventListener('input', event => {
+  if (event.target === languageSelect || !draft || draft.sealedAt) return;
   const language = selectedLanguage(), entered = currentTranslation(), saved = translationAt(draft, language);
   if (fields.every(key => entered[key] === saved[key])) pending.delete(language);
   else pending.set(language, entered);
