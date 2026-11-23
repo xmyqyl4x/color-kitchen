@@ -12,8 +12,8 @@ export function html(value: string) {
 
 const importMap = '{"imports":{"pdf-lib":"/vendor/pdf-lib.js"}}';
 const importMapHash = createHash('sha256').update(importMap).digest('base64');
-const policy = "default-src 'self'; script-src 'self' 'sha256-" + importMapHash +
-  "'; img-src 'self' blob: data:; worker-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
+const basePolicy = "default-src 'self'; script-src 'self' 'sha256-" + importMapHash +
+  "'; img-src 'self' blob: data:; worker-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'";
 
 export const pathFor = (locale: Locale, screen: Screen, slug?: string) =>
   '/' + locale + (screen ? '/' + screen : '') + (slug ? '/' + slug : '');
@@ -124,6 +124,7 @@ export function homeScreen(locale: Locale) {
 export function renderShell(request: Request, options: Readonly<{
   locale: Locale; screen: Screen; title: string; content: string; slug?: string; topic?: DiscoveryTopic; index?: boolean;
   status?: number; seoTitle?: string; description?: string; module?: string; adFrame?: URL; indexing?: boolean;
+  allowEmbedding?: boolean;
 }>) {
   const { locale, screen, slug, topic, title, content, status = 200, module } = options;
   const publicPage = options.index === true && status === 200;
@@ -191,7 +192,7 @@ export function renderShell(request: Request, options: Readonly<{
     'Content-Type': 'text/html; charset=utf-8', 'Content-Language': locale,
     'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin',
     ...(index ? {} : { 'X-Robots-Tag': 'noindex' }),
-    'Content-Security-Policy': policy + '; frame-src ' + (ad?.origin ?? "'none'"),
+    'Content-Security-Policy': basePolicy + (options.allowEmbedding ? '' : "; frame-ancestors 'none'") + '; frame-src ' + (ad?.origin ?? "'none'"),
     'Set-Cookie': 'ck_locale=' + locale + '; Path=/; Max-Age=31536000; SameSite=Lax' + (url.protocol === 'https:' ? '; Secure' : ''),
   } });
 }

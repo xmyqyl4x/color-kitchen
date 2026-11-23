@@ -8,10 +8,16 @@ export type HttpHandler = (request: Request) => Response | Promise<Response>;
 function localRequestOrigin(request: IncomingMessage) {
   const { localAddress = loopbackHost, localPort } = request.socket;
   if (!localPort) throw new Error('Listener port is unavailable.');
+  const hostHeader = (request.headers.host ?? '').trim();
   // Direct loopback development can use localhost, IPv4, or IPv6 on the listener's actual port.
-  const alias = /^(localhost|127\.0\.0\.1|\[::1\])(?::(\d{1,5}))?$/i.exec(request.headers.host ?? '');
+  const alias = /^(localhost|127\.0\.0\.1|\[::1\])(?::(\d{1,5}))?$/i.exec(hostHeader);
   if (isLoopbackHost(localAddress) && alias && Number(alias[2] ?? 80) === localPort) {
     return 'http://' + alias[0].toLowerCase();
+  }
+  const forwardedProto = request.headers['x-forwarded-proto'];
+  const proto = (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto)?.split(',')[0]?.trim().toLowerCase();
+  if (hostHeader && /^[a-z0-9.-]+(?::\d{1,5})?$/i.test(hostHeader) && (!isLoopbackHost(localAddress) || proto === 'https')) {
+    return (proto === 'https' ? 'https://' : 'http://') + hostHeader.toLowerCase();
   }
   return listenerUrl(localAddress, localPort).origin;
 }
