@@ -30,7 +30,7 @@ Set the production origin and indexing flag on the selected Google Cloud service
 | `COLOR_KITCHEN_INDEXING` | `false` for the test service. Set `true` when the production domain is ready for indexing. |
 | `COLOR_KITCHEN_MEASUREMENT` | `false` for the initial deployment. Set `true` when enabling consented palette usage measurement. |
 
-The production server requires `COLOR_KITCHEN_ORIGIN` and `DATABASE_URL` before it starts listening. It uses PostgreSQL for catalog data and enforces `frame-ancestors 'none'` in `Content-Security-Policy`. Use the same hostname in your browser that you configured in `COLOR_KITCHEN_ORIGIN`.
+The production server requires `COLOR_KITCHEN_ORIGIN` and PostgreSQL configuration (either Cloud SQL `SQL_HOST`/`SQL_DB_NAME`/`SQL_USER`/`SQL_PASSWORD` or `DATABASE_URL`) before it starts listening. It uses PostgreSQL for catalog data and enforces `frame-ancestors 'none'` in `Content-Security-Policy`. Use the same hostname in your browser that you configured in `COLOR_KITCHEN_ORIGIN`.
 
 For Cloud SQL for PostgreSQL using the Cloud Run Unix socket connection, format the `DATABASE_URL` secret as:
 
@@ -44,13 +44,15 @@ Attach the Cloud SQL instance to the Cloud Run service, grant its runtime servic
 
 | Setting | Where to set it | Behavior |
 | --- | --- | --- |
-| `DATABASE_URL` | Runtime, migration or seed process environment | Selects the target PostgreSQL database. Use the runtime role for serving and the migration role for schema changes. |
+| `SQL_HOST`, `SQL_DB_NAME`, `SQL_USER`, `SQL_PASSWORD` | Cloud SQL runtime environment | Preferred Cloud SQL Object-Method pool parameters (`src/db/index.ts`), connecting via the Cloud SQL Auth Proxy Unix domain socket using the least-privilege runtime role. See the [Cloud SQL setup runbook](cloudsql-setup.md). |
+| `SQL_ADMIN_USER` and `SQL_ADMIN_PASSWORD` | Cloud SQL migration/seed environment | Administrative credentials used by Drizzle Kit (`src/db/drizzle.config.ts`), `npm run db:migrate`, and `npm run db:seed`. |
+| `DATABASE_URL` | External PostgreSQL, CI, or Cloud Run secret | Connection URL fallback used when `SQL_HOST` is not set. Use the runtime role for serving and the migration role for schema changes. |
 | `COLOR_KITCHEN_DB_POOL_MAX` | Web service runtime environment | Defaults to 10 connections per web process. Choose a value that fits the database limit and the number of replicas. |
 | `COLOR_KITCHEN_DB_CONNECT_TIMEOUT_MS` and `COLOR_KITCHEN_DB_STATEMENT_TIMEOUT_MS` | Web service runtime environment | Runtime connection and statement timeouts. They default to 3000 and 5000 milliseconds. |
 | `COLOR_KITCHEN_DEV_DB_PORT`, `COLOR_KITCHEN_DEV_DB_USER` and `COLOR_KITCHEN_DEV_DB_PASSWORD` | Local development Compose environment | Override the disposable PostgreSQL port and initial credentials. The test database name is `color_kitchen_test`. Update the development connection URL and test connection URL together. Initial credentials apply when PostgreSQL initializes a volume. |
 | `COLOR_KITCHEN_TEST_DATABASE_URL` | Test process environment | Points to a disposable instance with permission to create uniquely named test databases. The test runner checks the fixture database name before running. |
 
-Apply [database migrations](database.md) against the intended environment before directing traffic to the new runtime. Local Compose credentials are for the disposable database.
+Apply [database migrations](database.md) and review the [Cloud SQL setup runbook](cloudsql-setup.md) before directing traffic to a new runtime. Local Compose credentials are for the disposable database.
 
 ## Optional integrations
 

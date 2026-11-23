@@ -1,3 +1,4 @@
+import { hasCloudSqlEnv } from '../db/index.js';
 import { listenerFromEnvironment, publicOrigin, runtimeFromEnvironment } from './runtime-config.js';
 
 export function cleanEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
@@ -10,12 +11,15 @@ export function cleanEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
 
 export function resolveCliRuntime(rawEnv: NodeJS.ProcessEnv, warn: (message: string) => void = console.warn) {
   const env = cleanEnvironment(rawEnv);
+  const hasCloudSql = hasCloudSqlEnv(env);
   const connectionString = env.DATABASE_URL;
 
   if (env.NODE_ENV === 'production') {
     const runtime = runtimeFromEnvironment(env);
-    if (!connectionString) throw new Error('Set DATABASE_URL to the PostgreSQL connection URL for this deployment.');
-    return { env, isProduction: true as const, connectionString, runtime };
+    if (!hasCloudSql && !connectionString) {
+      throw new Error('Set Cloud SQL variables (SQL_HOST, SQL_DB_NAME, SQL_USER, SQL_PASSWORD) or DATABASE_URL for this deployment.');
+    }
+    return { env, isProduction: true as const, hasCloudSql, connectionString, runtime };
   }
 
   let origin: string | undefined;
@@ -42,6 +46,7 @@ export function resolveCliRuntime(rawEnv: NodeJS.ProcessEnv, warn: (message: str
   return {
     env,
     isProduction: false as const,
+    hasCloudSql,
     connectionString,
     runtime: {
       ...listener,

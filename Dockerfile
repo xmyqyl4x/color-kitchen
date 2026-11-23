@@ -4,7 +4,7 @@ COPY package.json package-lock.json ./
 
 FROM dependencies AS build
 RUN npm ci --ignore-scripts
-COPY tsconfig.json ./
+COPY tsconfig.json firebase-applet-config.json ./
 COPY src/ src/
 RUN npm run build
 
@@ -17,6 +17,7 @@ LABEL org.opencontainers.image.revision=$REVISION
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
 COPY --from=production-dependencies /app/node_modules/ node_modules/
 COPY --from=build /app/dist/src/ dist/src/
+COPY --from=build /app/dist/firebase-applet-config.json dist/firebase-applet-config.json
 COPY src/web/kitchen.css src/web/kitchen.css
 COPY catalog/ catalog/
 COPY db/ db/

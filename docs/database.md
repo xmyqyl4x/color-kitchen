@@ -6,6 +6,14 @@ The checked-in migrations target the disposable PostgreSQL 18 fixture. The share
 
 Number new SQL files under `db/migrations/` in ascending order. Leave applied files immutable. The runner compares the existing ledger against the local migration prefix using version, filename and SHA-256 checksum, then applies pending files under a transaction and a PostgreSQL advisory lock. Use schema-qualified SQL and transactional statements. Generate UUIDs in the application and use `timestamptz` for instants. The migration identity owns DDL and its ledger. Future application roles get only the required object grants.
 
+## Cloud SQL for PostgreSQL and Drizzle ORM
+
+When running against Google Cloud SQL for PostgreSQL (see the [Cloud SQL setup runbook](cloudsql-setup.md)), the application connects via the `pg.Pool` Object Method using runtime variables (`SQL_HOST`, `SQL_DB_NAME`, `SQL_USER`, `SQL_PASSWORD`) and admin migration variables (`SQL_ADMIN_USER`, `SQL_ADMIN_PASSWORD`):
+
+- **Schema separation:** Drizzle ORM (`src/db/schema.ts`, `src/db/drizzle.config.ts`) manages `public.users` and `public.saved_palettes` with `schemaFilter: ['public']`, while `db/migrations/0001..0010` manage `ck` and `ck_migrations`.
+- **Runtime grants:** `npm run db:migrate` (`src/db/cli.ts`) automatically grants `SQL_USER` `USAGE` on schema `ck` plus `SELECT, INSERT, UPDATE, DELETE` on tables and `USAGE, SELECT` on sequences in `ck` when run with `SQL_ADMIN_USER`.
+- **Catalog seeding:** `npm run db:seed` (`src/catalog/seed-cli.ts`) uses `SQL_ADMIN_USER` when `SQL_HOST` is set and falls back to `DATABASE_URL` for local Compose and CI runs.
+
 ## Restore rehearsal
 
 1. Capture the development connection, server version and ledger head before changing state.

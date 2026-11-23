@@ -61,6 +61,17 @@ test('production startup requires a public origin and PostgreSQL connection URL'
   for (const database of [undefined, '  ']) {
     assert.throws(() => resolveCliRuntime({ ...env, DATABASE_URL: database }), /DATABASE_URL/);
   }
+
+  const cloudSqlProd = resolveCliRuntime({
+    ...env,
+    DATABASE_URL: undefined,
+    SQL_HOST: '/cloudsql/proj:us-east1:inst',
+    SQL_DB_NAME: 'color_kitchen',
+    SQL_USER: 'app_user',
+    SQL_PASSWORD: 'secret',
+  });
+  assert.equal(cloudSqlProd.isProduction, true);
+  assert.equal(cloudSqlProd.hasCloudSql, true);
 });
 
 test('in-memory catalog serves seeded palettes, colors, gradients, fonts, and topics', async () => {
