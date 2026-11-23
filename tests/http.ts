@@ -1,8 +1,8 @@
 import { once } from 'node:events';
 import { httpServer, type HttpHandler } from '../src/http/server.js';
 
-export async function withHttp<T>(handler: HttpHandler, work: (origin: string) => Promise<T>) {
-  const server = httpServer(handler);
+export async function withHttp<T>(handler: HttpHandler, work: (origin: string) => Promise<T>, publicOrigin?: string) {
+  const server = httpServer(handler, publicOrigin);
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   try {

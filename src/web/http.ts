@@ -54,11 +54,13 @@ function navigationLocale(request: Request) {
   return resolveLocale({ saved, browser: request.headers.get('accept-language') ?? undefined }).locale;
 }
 
-export function webHttp(dependencies: CatalogHttpDependencies & { adFrameUrl?: string; verifyIdentity?: VerifyIdentity }) {
+export function webHttp(dependencies: CatalogHttpDependencies & {
+  adFrameUrl?: string; verifyIdentity?: VerifyIdentity; indexing?: boolean;
+}) {
   const discovery = discoveryPage(dependencies);
   const fonts = fontToolsPage(dependencies);
   const adFrame = approvedAdFrame(dependencies.adFrameUrl);
-  const seo = seoHttp(dependencies);
+  const seo = seoHttp(dependencies, dependencies.indexing);
 
   return async (request: Request) => {
     const url = new URL(request.url);
@@ -94,7 +96,7 @@ export function webHttp(dependencies: CatalogHttpDependencies & { adFrameUrl?: s
     const namedScreen = screen as Screen;
     if (screen === 'catalog-admin' && !entry) return adminPortal(request, locale, dependencies);
     const title = screenTitle(locale, namedScreen);
-    const base = { locale, screen: namedScreen, title, slug: entry, topic, adFrame };
+    const base = { locale, screen: namedScreen, title, slug: entry, topic, adFrame, indexing: dependencies.indexing };
     if (!screen && !entry) return renderShell(request, { ...base, content: homeScreen(locale), index: true });
     if (screen === 'palette-studio' && !entry) return renderShell(request, { ...base, content: paletteStudio(locale),
       index: true, module: '/src/web/studio-client.js' });

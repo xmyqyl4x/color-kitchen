@@ -64,7 +64,8 @@ jobs:
           database=postgresql://ck_dev:ck_dev_local@127.0.0.1:5432/ck_ci_release
           docker run --rm --network "container:$POSTGRES_CONTAINER" -e "DATABASE_URL=$database" "$image" node dist/src/db/cli.js
           docker run --rm --network "container:$POSTGRES_CONTAINER" -e "DATABASE_URL=$database" "$image" node dist/src/catalog/seed-cli.js
-          docker run --detach --name "$web" --network "container:$POSTGRES_CONTAINER" -e "DATABASE_URL=$database" "$image"
+          docker run --detach --name "$web" --network "container:$POSTGRES_CONTAINER" -e "DATABASE_URL=$database" \
+            -e PORT=3100 -e COLOR_KITCHEN_ORIGIN=https://color-kitchen.example.test "$image"
           for attempt in {1..25}; do
             status=$(docker inspect "$web" --format '{{.State.Health.Status}}')
             if [ "$status" = healthy ]; then break; fi
@@ -73,17 +74,29 @@ jobs:
           test "$status" = healthy
           docker exec -i "$web" node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
+          const listener = 'http://127.0.0.1:' + process.env.PORT;
+          const publicOrigin = process.env.COLOR_KITCHEN_ORIGIN;
           for (const locale of ['en', 'fr', 'es', 'pt', 'de']) {
-            const origin = 'http://127.0.0.1:3000';
-            const home = await fetch(origin + '/' + locale);
+            const home = await fetch(listener + '/' + locale);
             assert.equal(home.status, 200);
             assert.equal(home.headers.get('content-language'), locale);
-            assert.match(await home.text(), new RegExp('<html lang="' + locale + '"'));
-            const detail = await fetch(origin + '/api/v1/catalog/palette/forest-study?locale=' + locale);
+            assert.match(home.headers.get('set-cookie'), /; Secure/);
+            const html = await home.text();
+            assert.match(html, new RegExp('<html lang="' + locale + '"'));
+            assert(html.includes('<link rel="canonical" href="' + publicOrigin + '/' + locale + '">'));
+            const detail = await fetch(listener + '/api/v1/catalog/palette/forest-study?locale=' + locale);
             assert.equal(detail.status, 200);
             assert.equal((await detail.json()).data.entry.revision, 1);
           }
-          for (const asset of ['/assets/kitchen.css', '/assets/source-sans.woff2', '/vendor/pdf-lib.js', '/src/web/studio-client.js']) {
-            assert.equal((await fetch('http://127.0.0.1:3000' + asset, { method: 'HEAD' })).status, 200, asset);
+          const robots = await fetch(listener + '/robots.txt');
+          assert.equal(robots.status, 200);
+          assert((await robots.text()).includes('Sitemap: ' + publicOrigin + '/sitemap.xml'));
+          const sitemap = await fetch(listener + '/sitemap.xml');
+          assert.equal(sitemap.status, 200);
+          const xml = await sitemap.text();
+          assert(xml.includes('<loc>' + publicOrigin + '/fr/palettes/forest-study</loc>'));
+          assert(!xml.includes(listener));
+          for (const asset of ['/assets/kitchen.css', '/assets/source-sans.woff2', '/assets/social-card.png', '/vendor/pdf-lib.js', '/src/web/studio-client.js']) {
+            assert.equal((await fetch(listener + asset, { method: 'HEAD' })).status, 200, asset);
           }
           JS

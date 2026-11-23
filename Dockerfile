@@ -22,5 +22,5 @@ COPY catalog/ catalog/
 COPY db/ db/
 USER node
 EXPOSE 3000
-HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 CMD ["node", "-e", "fetch('http://127.0.0.1:' + process.env.PORT + '/api/v1/catalog/palette?locale=en&limit=1', {signal: AbortSignal.timeout(4000)}).then(response => { if (!response.ok) process.exitCode = 1; }).catch(() => { process.exitCode = 1; })"]
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 CMD ["node", "dist/src/http/health.js"]
 CMD ["node", "dist/src/http/cli.js"]

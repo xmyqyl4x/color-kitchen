@@ -32,7 +32,7 @@ Set `COLOR_KITCHEN_IMAGE` to the verified image ID, `COLOR_KITCHEN_RUNTIME_ENV` 
 docker compose --project-name ck-phase1-release --file compose.release.yaml up -d --wait
 ```
 
-Use `COLOR_KITCHEN_RELEASE_PORT` to select an available port and match it in the app's `COLOR_KITCHEN_ORIGIN`.
+Use `COLOR_KITCHEN_RELEASE_PORT` to select an available loopback port and match it in the app's `COLOR_KITCHEN_ORIGIN`. If you need a different internal listener, set `COLOR_KITCHEN_RELEASE_CONTAINER_PORT`. Compose applies that value to both the process and the port mapping. [Environment configuration](environment-configuration.md)
 
 ## Recover
 

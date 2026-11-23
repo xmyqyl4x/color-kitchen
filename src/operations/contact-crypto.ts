@@ -4,6 +4,37 @@ export type ContactKey = Readonly<{ id: string; encryptKey: Uint8Array; hmacKey:
 export type ContactKeys = Readonly<{ active: ContactKey; resolve: (id: string) => ContactKey | undefined }>;
 type Field = 'replyEmail' | 'message';
 
+function contactKey(id: string, fields: { encryptKey?: unknown; hmacKey?: unknown } | null, setting: string): ContactKey {
+  const { encryptKey, hmacKey } = fields ?? {};
+  const hex = /^[0-9a-f]{64}$/i;
+  if (!/^[a-z0-9_-]{1,48}$/i.test(id) || typeof encryptKey !== 'string' || !hex.test(encryptKey) ||
+      typeof hmacKey !== 'string' || !hex.test(hmacKey)) {
+    throw new Error('Configure a valid key ID and two 32-byte hexadecimal keys for ' + setting + '.');
+  }
+  return { id, encryptKey: Buffer.from(encryptKey, 'hex'), hmacKey: Buffer.from(hmacKey, 'hex') };
+}
+
+export function contactKeysFromEnvironment(env: NodeJS.ProcessEnv): ContactKeys | undefined {
+  const { COLOR_KITCHEN_CONTACT_ENCRYPT_KEY: encryptKey, COLOR_KITCHEN_CONTACT_HMAC_KEY: hmacKey,
+    COLOR_KITCHEN_CONTACT_PREVIOUS_KEYS: previous } = env;
+  if (encryptKey === undefined && hmacKey === undefined && previous === undefined) return undefined;
+  const active = contactKey(env.COLOR_KITCHEN_CONTACT_KEY_ID ?? 'contact-v1', { encryptKey, hmacKey }, 'active inquiry encryption');
+  const keys = new Map([[active.id, active]]);
+  if (previous !== undefined) {
+    const setting = 'COLOR_KITCHEN_CONTACT_PREVIOUS_KEYS';
+    let entries: unknown;
+    try { entries = JSON.parse(previous); } catch { throw new Error('Set ' + setting + ' to a JSON object keyed by retained key ID.'); }
+    if (!entries || typeof entries !== 'object' || Array.isArray(entries)) {
+      throw new Error('Set ' + setting + ' to a JSON object keyed by retained key ID.');
+    }
+    for (const [id, fields] of Object.entries(entries)) {
+      if (keys.has(id)) throw new Error('Use a new active inquiry key ID when retaining older keys.');
+      keys.set(id, contactKey(id, fields, setting));
+    }
+  }
+  return { active, resolve: id => keys.get(id) };
+}
+
 function context(id: string, field: Field) {
   return Buffer.from(JSON.stringify([1, id, field]));
 }
