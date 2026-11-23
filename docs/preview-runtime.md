@@ -9,11 +9,16 @@ This document records the changes, architectural decisions, and trade-offs made 
 | `package.json` | Modified | Relaxed `engines.node` to `>=22`; added `dev` (`npm run build && node dist/src/http/cli.js`) and `lint` (`tsc --noEmit`) scripts. `.node-version` (`24.22.3`) is intentionally preserved for CI and Docker parity. |
 | `.env.example` | Modified | Documented optional runtime variables with empty defaults, Cloud SQL Unix socket `DATABASE_URL` format comments, and a warning not to define `PORT` as a custom Cloud Run env var. |
 | `src/db/in-memory-catalog.ts` | Added | In-memory PostgreSQL `ClientBase` adapter pre-seeded from `src/catalog/base-data.ts` (`baseCatalog`). |
-| `src/http/cli-env.ts` | Added | Strips blank placeholders, normalizes invalid development origins where possible, and requires a valid `COLOR_KITCHEN_ORIGIN` and nonblank `DATABASE_URL` in production. |
-| `src/http/cli.ts` | Modified | Creates a PostgreSQL pool directly in production. In development and preview, probes PostgreSQL and falls back to the in-memory catalog when needed. Enables the hosted Guide only with PostgreSQL budget admission. |
+| `src/http/cli-env.ts` | Added | Strips blank placeholders, normalizes invalid development origins where possible, and requires a valid `COLOR_KITCHEN_ORIGIN` plus PostgreSQL configuration (`SQL_*` or `DATABASE_URL`) in production. |
+| `src/http/cli.ts` | Modified | Connects lazily via Cloud SQL Object-Method `pg.Pool` (`SQL_*`) or `DATABASE_URL`, falls back to the in-memory catalog in development when no DB is configured, enables the hosted Guide only with PostgreSQL budget admission, and mounts `/api/v1/account/*`. |
 | `src/http/server.ts` | Modified | Extends `localRequestOrigin` to respect `Host` and `X-Forwarded-Proto` when running without an explicit `COLOR_KITCHEN_ORIGIN` on a non-loopback listener or behind an HTTPS proxy. |
 | `src/web/http.ts` & `src/web/shell.ts` | Modified | Adds opt-in `allowEmbedding` flag; defaults to strict `frame-ancestors 'none'` for production/Cloud Run and omits it only when `NODE_ENV !== 'production'`. |
-| `tests/in-memory-catalog.test.ts` | Added | Unit tests validating `resolveCliRuntime`, in-memory catalog queries, localized routes, API responses, and both strict and preview CSP headers. |
+| `tests/in-memory-catalog.test.ts` | Added | Unit tests validating `resolveCliRuntime` (dev & strict prod with `DATABASE_URL` or `SQL_*`), in-memory catalog queries, localized routes, API responses, and both strict and preview CSP headers. |
+| `src/db/schema.ts`, `src/db/drizzle.config.ts`, `src/db/index.ts`, `src/db/users.ts` | Added | Cloud SQL for PostgreSQL Object-Method connection pool (`SQL_HOST`, `SQL_DB_NAME`, `SQL_USER`, `SQL_PASSWORD`), Drizzle ORM schema (`public.users`, `public.saved_palettes`) and Drizzle Kit admin config (`SQL_ADMIN_USER`, `SQL_ADMIN_PASSWORD`, `schemaFilter: ['public']`), plus `onConflictDoUpdate` user upsert and saved-palette helpers. |
+| `src/lib/firebase.ts`, `src/lib/firebase-admin.ts`, `src/middleware/auth.ts`, `src/http/account.ts` | Added | Firebase Authentication setup (Google Sign-In client config, server-side Firebase Admin ID token verification via static JSON import of `firebase-applet-config.json`, Bearer auth middleware, and authenticated `/api/v1/account/*` routes). |
+| `src/db/cli.ts` & `src/catalog/seed-cli.ts` | Modified | Support Cloud SQL admin environment variables (`SQL_HOST`, `SQL_DB_NAME`, `SQL_ADMIN_USER`, `SQL_ADMIN_PASSWORD`) alongside `DATABASE_URL`, and automatically grant `SQL_USER` runtime privileges on schema `ck` after migrations. |
+| `docs/cloudsql-setup.md` | Added | Full Cloud SQL for PostgreSQL, Drizzle ORM, dual-schema migration/seeding, and Firebase Authentication setup runbook. |
+| `tests/cloudsql-account.test.ts` | Added | Unit tests validating Cloud SQL environment variable detection and Firebase-authenticated `/api/v1/account/*` authorization and payload validation. |
 | `docs/environment-configuration.md` | Modified | Added Cloud Run settings table and Cloud SQL Unix socket `DATABASE_URL` format under Google Cloud production. |
 | `README.md` | Modified | Updated Development instructions for Node.js 22+, `npm run dev`, `.node-version` CI/Docker parity, and links to this guide and `CHANGELOG.md`. |
 | `CHANGELOG.md` | Added | Project changelog recording all changes under `[Unreleased]`. |
@@ -28,9 +33,9 @@ This document records the changes, architectural decisions, and trade-offs made 
 - **Decision**: Keep `.node-version` unchanged at `24.22.3` and update only `package.json` `engines.node` to `>=22`.
 - **Why**: `.github/workflows/verify.yml` passes `node-version-file: .node-version` to `actions/setup-node@v5` and `Dockerfile` pins `node:24.22.3-bookworm-slim`. Deleting `.node-version` would break GitHub Actions CI. Relaxing `engines.node` to `>=22` lets Node 22 containers run cleanly without disturbing CI or release Docker images.
 
-### 3. Production PostgreSQL strictness vs. development/preview in-memory fallback
-- **Production (`NODE_ENV=production`)** requires `COLOR_KITCHEN_ORIGIN` and `DATABASE_URL` before the HTTP listener starts. The server always uses the PostgreSQL pool and checks database health separately from startup, so subsequent requests can recover after a transient Cloud SQL outage.
-- **Development and preview** probe `DATABASE_URL` with `SELECT 1 FROM ck.published_catalog LIMIT 1`. A missing, unreachable, or unmigrated database triggers a warning and the in-memory catalog serves all five locales (`en`, `fr`, `es`, `pt`, `de`). The browser’s local Guide works with the fallback. Hosted Guide requests return `503` until the app starts with PostgreSQL and can enforce the configured budgets.
+### 3. Lazy Cloud SQL Object-Method pooling with schema separation (`public` vs `ck`)
+- **Decision**: Connect via the `pg.Pool` Object Method (`SQL_HOST`, `SQL_DB_NAME`, `SQL_USER`, `SQL_PASSWORD`) in `src/db/index.ts` lazily with no eager startup probe or reconnect loop; keep Drizzle Kit scoped to `schemaFilter: ['public']` (`users`, `saved_palettes`) while Color Kitchen's existing SQL migrations (`db/migrations/0001..0010`) manage schema `ck` and grant `SQL_USER` read/write privileges.
+- **Why**: Cloud SQL Auth Proxy connects via Unix domain sockets (`SQL_HOST`), and omitting startup probes avoids cold-start connection bursts on Cloud Run. Scoping Drizzle to `public` lets both Drizzle-managed account tables and Color Kitchen's `ck` catalog/moderation tables coexist cleanly in the same PostgreSQL database, while retaining `DATABASE_URL` support for CI and external PostgreSQL.
 
 ### 4. Resilient development env parsing (`src/http/cli-env.ts`)
 - **Decision**: Strip blank/whitespace-only environment variables in `cleanEnvironment()`, normalize path-containing `COLOR_KITCHEN_ORIGIN` URLs (or ignore unparseable placeholders) in development mode, and warn-and-skip malformed optional keys in development while throwing in `NODE_ENV=production`.
@@ -50,6 +55,6 @@ This document records the changes, architectural decisions, and trade-offs made 
 
 ## Verification
 - `npm run build` and `npm run lint` (`tsc --noEmit`): passed with 0 errors.
-- Unit tests (`node --test dist/tests/in-memory-catalog.test.js dist/tests/color.test.js dist/tests/palette.test.js`): 11/11 passing.
+- Unit tests (`tests/cloudsql-account.test.ts`, `tests/in-memory-catalog.test.ts`, `tests/color.test.ts`, `tests/palette.test.ts`): 14/14 passing.
+- Cloud SQL PostgreSQL (`ai-studio-5c9c23da` in `us-east1`): Drizzle `public` schema (`users`, `saved_palettes`) pushed via `UpdateSchema` and verified via `information_schema.columns`; Color Kitchen `ck` schema migrated (`0001`–`0010`) with runtime grants for `SQL_USER` and seeded with the 5-locale base catalog.
 - Browser verification in headless Chromium (`1440×900` desktop and `390×844` mobile): verified `/en`, `/en/palette-studio`, `/en/palettes`, `/en/palettes/forest-study`, `/en/colors`, `/en/gradients`, `/en/fonts`, and `/fr` with 0 console errors and 0 failed network requests.
-- Untouched `package-lock.json` and restored `.node-version` (`24.22.3`) preserve `.github/workflows/verify.yml` CI and `Dockerfile` build compatibility.

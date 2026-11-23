@@ -8,6 +8,7 @@ import { operationsHttp } from './operations.js';
 import { identityFromEnvironment } from './identity.js';
 import { projectThemesHttp } from './project-themes.js';
 import { adminCatalogHttp } from './admin-catalog.js';
+import { accountHttp } from './account.js';
 import { deliverCatalogInvalidation, revalidateCatalog } from '../catalog/invalidation.js';
 import { httpServer } from './server.js';
 import { webHttp } from '../web/http.js';
@@ -16,31 +17,19 @@ import { inquiryWebhook } from '../operations/inquiry-delivery.js';
 import { publicSupport } from '../operations/public-support.js';
 import { contactKeysFromEnvironment } from '../operations/contact-crypto.js';
 import { createInMemoryCatalogClient } from '../db/in-memory-catalog.js';
+import { createPool } from '../db/index.js';
 import { resolveCliRuntime } from './cli-env.js';
 
-const { env, isProduction, connectionString, runtime } = resolveCliRuntime(process.env);
+const { env, isProduction, hasCloudSql, connectionString, runtime } = resolveCliRuntime(process.env);
 
 let pool: pg.Pool | undefined;
-if (isProduction) {
+if (hasCloudSql) {
+  pool = createPool();
+} else if (connectionString) {
   pool = new pg.Pool({ connectionString, ...runtime.pool });
   pool.on('error', () => console.error('An idle PostgreSQL client was disconnected.'));
-} else if (connectionString) {
-  const candidate = new pg.Pool({ connectionString, ...runtime.pool });
-  candidate.on('error', () => console.error('An idle PostgreSQL client was disconnected.'));
-  try {
-    const client = await candidate.connect();
-    try {
-      await client.query('SELECT 1 FROM ck.published_catalog LIMIT 1');
-    } finally {
-      client.release();
-    }
-    pool = candidate;
-  } catch {
-    console.warn('[Color Kitchen] PostgreSQL is unavailable or unmigrated — running with in-memory seeded catalog.');
-    await candidate.end().catch(() => {});
-  }
 } else {
-  console.warn('[Color Kitchen] DATABASE_URL not set — running with in-memory seeded catalog.');
+  console.warn('[Color Kitchen] No PostgreSQL connection configured — running with in-memory seeded catalog.');
 }
 
 const memoryClient = pool ? undefined : createInMemoryCatalogClient();
@@ -121,10 +110,11 @@ const deliver = delivery && contact
   ? optionalSetting('COLOR_KITCHEN_INQUIRY_WEBHOOK', () => inquiryWebhook({ url: delivery, token: env.COLOR_KITCHEN_INQUIRY_TOKEN ?? '',
       deduplicationMs: Number(env.COLOR_KITCHEN_INQUIRY_DEDUP_MS ?? 0) }))
   : undefined;
+const account = accountHttp();
 const server = httpServer(async request => {
   const { pathname } = new URL(request.url);
   if (pathname === guidePath) return guide(request);
-  if (pathname.startsWith('/api/')) return await operations(request) ?? await projectThemes(request) ?? await adminCatalog(request) ?? catalog(request);
+  if (pathname.startsWith('/api/')) return await account(request) ?? await operations(request) ?? await projectThemes(request) ?? await adminCatalog(request) ?? catalog(request);
   return web(request);
 }, runtime.origin);
 server.listen(runtime.port, runtime.host, () => console.log(`Color Kitchen HTTP server listening on http://${runtime.host}:${runtime.port}`));
