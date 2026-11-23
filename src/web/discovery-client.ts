@@ -65,6 +65,12 @@ for (const element of document.querySelectorAll<HTMLElement>('[data-catalog-item
         palette = { swatches: [{ id: 'catalog-color', locked: false, color: value }, { id: 'neutral', locked: false, color: neutral }], roles: {} };
       }
       checkPalette(palette);
+      if (!color) {
+        for (const [index, code] of [...element.querySelectorAll('[data-palette-code]')].entries()) {
+          const swatch = palette.swatches[index];
+          if (swatch) code.replaceWith(colorToken(swatch.color));
+        }
+      }
       item = localDocument(title, { kind: 'palette', palette });
       for (const sampled of color ? [color] : palette.swatches.map(swatch => swatch.color)) {
         const tile = node('span');

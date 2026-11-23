@@ -31,6 +31,17 @@ h1 { margin-bottom: 1rem; font-size: clamp(2.3rem, 5vw, 4.25rem); overflow-wrap:
 h2 { font-size: clamp(1.55rem, 3vw, 2.2rem); }
 main { outline: 0; }
 main > p { max-width: 70ch; margin-bottom: 1rem; }
+.breadcrumbs { margin-bottom: .95rem; color: var(--quiet); }
+.breadcrumbs ol, .discovery-topics ul, .palette-codes ul {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .75rem; list-style: none; padding: 0; margin: 0;
+}
+.breadcrumbs li + li::before { content: '›'; padding-inline-end: .75rem; }
+.discovery-intro { max-width: 68ch; margin: -.25rem 0 1rem; }
+.discovery-topics { margin: 1rem 0; }
+.discovery-topics h2 { font-size: 1.2rem; margin-bottom: .35rem; }
+.discovery-topics a { display: inline-flex; align-items: center; min-height: 44px; }
+.palette-codes { margin-block: .65rem; }
+.palette-codes ul { margin-top: .25rem; }
 
 .skip {
   position: absolute;

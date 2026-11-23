@@ -14,6 +14,8 @@ import { colorToolsScreen } from './color-tools.js';
 import { previewToolsScreen } from './preview-tools.js';
 import { tailwindStudio } from './tailwind-studio.js';
 import { discoveryKinds, discoveryPage } from './discovery.js';
+import { discoveryTopic } from './discovery-topics.js';
+import { seoHttp } from './seo-http.js';
 import { gradientToolsScreen } from './gradient-tools.js';
 import { fontToolsPage } from './font-tools.js';
 import { guideScreen } from './guide.js';
@@ -24,6 +26,7 @@ import { adminPortal } from './admin.js';
 const knownScreens = new Set<string>(screenRoutes);
 const fileRoutes: Record<string, [string, string]> = {
   '/assets/kitchen.css': ['../../../src/web/kitchen.css', 'text/css; charset=utf-8'],
+  '/assets/social-card.png': ['../../../catalog/social-card.png', 'image/png'],
   '/assets/source-sans.woff2': ['../../../catalog/fonts/SourceSans3-Regular.woff2', 'font/woff2'],
   '/assets/source-sans-license.txt': ['../../../catalog/fonts/SourceSans3-OFL.txt', 'text/plain; charset=utf-8'],
   '/vendor/pdf-lib.js': ['../../../node_modules/pdf-lib/dist/pdf-lib.esm.min.js', 'text/javascript; charset=utf-8'],
@@ -55,6 +58,7 @@ export function webHttp(dependencies: CatalogHttpDependencies & { adFrameUrl?: s
   const discovery = discoveryPage(dependencies);
   const fonts = fontToolsPage(dependencies);
   const adFrame = approvedAdFrame(dependencies.adFrameUrl);
+  const seo = seoHttp(dependencies);
 
   return async (request: Request) => {
     const url = new URL(request.url);
@@ -63,7 +67,9 @@ export function webHttp(dependencies: CatalogHttpDependencies & { adFrameUrl?: s
     }
     const file = await webFile(request, url.pathname);
     if (file) return file;
-    const route = /^\/([^/]+)?(?:\/([^/]+))?(?:\/([^/]+))?\/?$/.exec(url.pathname);
+    const crawler = await seo(request, url);
+    if (crawler) return crawler;
+    const route = /^\/([^/]+)?(?:\/([^/]+))?(?:\/([^/]+))?(?:\/([^/]+))?\/?$/.exec(url.pathname);
     const first = route?.[1];
     const locale = isLocale(first) ? first : navigationLocale(request);
     if (route && (!first || (!isLocale(first) && knownScreens.has(first) && !route[3]))) {
@@ -73,17 +79,22 @@ export function webHttp(dependencies: CatalogHttpDependencies & { adFrameUrl?: s
       } });
     }
     const screen = route?.[2] ?? '';
-    const entry = route?.[3];
+    const topic = route?.[4] ? discoveryTopic(screen, route[3], route[4]) : undefined;
+    const entry = topic ? undefined : route?.[3];
     const heading = (value: string) => '<h1>' + html(value) + '</h1>';
     const notice = (key: 'unavailable' | 'unreleased' | 'loadError') => '<p>' + html(webText(locale, key)) + '</p>';
     const missing = () => renderShell(request, { locale, screen: '', title: webText(locale, 'missing'),
       content: heading(webText(locale, 'missing')) + '<p><a href="' + pathFor(locale, '') + '">' +
         html(webText(locale, 'home')) + '</a></p>', status: 404 });
-    if (!route || !isLocale(first) || !knownScreens.has(screen) || (entry && (entry.length > 100 || !slugPattern.test(entry)))) return missing();
+    if (!route || !isLocale(first) || !knownScreens.has(screen) || (route[4] && !topic) ||
+        (entry && (entry.length > 100 || !slugPattern.test(entry)))) return missing();
+    if (url.pathname.endsWith('/')) {
+      return new Response(null, { status: 308, headers: { Location: url.pathname.slice(0, -1) + url.search } });
+    }
     const namedScreen = screen as Screen;
     if (screen === 'catalog-admin' && !entry) return adminPortal(request, locale, dependencies);
     const title = screenTitle(locale, namedScreen);
-    const base = { locale, screen: namedScreen, title, slug: entry, adFrame };
+    const base = { locale, screen: namedScreen, title, slug: entry, topic, adFrame };
     if (!screen && !entry) return renderShell(request, { ...base, content: homeScreen(locale), index: true });
     if (screen === 'palette-studio' && !entry) return renderShell(request, { ...base, content: paletteStudio(locale),
       index: true, module: '/src/web/studio-client.js' });
@@ -113,7 +124,7 @@ export function webHttp(dependencies: CatalogHttpDependencies & { adFrameUrl?: s
     }
     try {
       if (Object.hasOwn(discoveryKinds, screen)) {
-        const result = await discovery(request, screen as keyof typeof discoveryKinds, locale, entry);
+        const result = await discovery(request, screen as keyof typeof discoveryKinds, locale, entry, topic);
         if (result instanceof Response) return result;
         return result ? renderShell(request, { ...base, ...result, module: '/src/web/discovery-client.js' }) : missing();
       }

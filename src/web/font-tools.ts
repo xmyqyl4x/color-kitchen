@@ -6,6 +6,8 @@ import type { Locale } from '../model/locales.js';
 import { catalogFont, fontCategories, isFontCategory } from '../typography/fonts.js';
 import { collectionText } from './collection-text.js';
 import { fontToolsText } from './font-tools-text.js';
+import { hasDiscoveryFilters } from './seo-http.js';
+import { pageSeo, seoLabels } from './seo-text.js';
 import { html, pathFor } from './shell.js';
 import { screenTitle } from './strings.js';
 
@@ -71,9 +73,12 @@ export function fontToolsPage(deps: CatalogHttpDependencies) {
         t('weight') + '<input type="number" name="weight" min="1" max="1000" value="' + (weight || '') + '"></label>' +
         '<div class="studio-actions"><button class="button primary" type="submit">' + t('search') + '</button><a class="secondary-link" href="' +
         pathFor(locale, 'fonts') + '">' + t('clear') + '</a></div></form>';
-      return { title, index: Boolean(slug) || (!query && !category && !script && !weight),
-        content: '<section class="studio fonts-ui"><h1>' + html(title) + '</h1>' + (slug ? '<a class="secondary-link" href="' +
-          pathFor(locale, 'fonts') + '">' + html(screenTitle(locale, 'fonts')) + '</a>' : filters) +
+      const filtered = hasDiscoveryFilters(params, ['q', 'category', 'script', 'weight']);
+      const description = target?.entry.summary ?? pageSeo(locale, 'fonts')![1];
+      return { title, seoTitle: target ? title + ' · ' + seoLabels(locale).font : undefined,
+        description, index: Boolean(slug) || (!filtered && entries.length > 0),
+        content: '<section class="studio fonts-ui"><h1>' + html(title) + '</h1>' + (slug ? '' :
+          (!filtered ? '<p class="discovery-intro">' + html(description) + '</p>' : '') + filters) +
         '<label class="font-preview-control">' + t('sample') + '<input id="font-library-sample" maxlength="180" value="' + t('example') + '"></label>' +
         (cards ? '<ul class="collection-grid font-library-grid' + (slug ? ' font-library-detail' : '') + '">' + cards + '</ul>' :
           '<p role="status">' + t('empty') + '</p>') + '</section>' };
