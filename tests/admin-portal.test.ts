@@ -85,6 +85,11 @@ test('staff portal preserves conflicting edits and reviews, publishes and rolls 
             await saveTranslation(editor, 'fr', 'Bleu du portail');
             await saveTranslation(editor, 'es', 'Azul del portal');
             await saveTranslation(editor, 'de', 'Portalblau');
+            await editor.locator('#admin-language').selectOption('fr');
+            assert.equal(await form(editor, 'title').inputValue(), 'Bleu du portail');
+            await editor.locator('#admin-language').selectOption('pt');
+            assert.equal(await form(editor, 'title').inputValue(), '');
+            assert.equal(await editor.locator('#admin-pending').isVisible(), false);
             assert.match((await editor.locator('#admin-coverage').textContent())!, /Português/);
             await publicVersions(0);
 
