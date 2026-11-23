@@ -6,7 +6,6 @@ import type { CatalogTags } from '../catalog/search.js';
 import type { CatalogSeed } from '../catalog/seed.js';
 import { parseColor } from '../color/parse.js';
 import type { Gradient } from '../gradient/gradient.js';
-import type { GuideAdmission } from '../guide/service.js';
 import { locales, type Locale } from '../model/locales.js';
 
 type StoredItem = Readonly<{
@@ -272,12 +271,4 @@ export function createInMemoryCatalogClient(seeds: readonly CatalogSeed[] = base
   }
 
   return { query } as unknown as ClientBase;
-}
-
-export function inMemoryGuideAdmission(): GuideAdmission {
-  return {
-    async reserve() {
-      return { accepted: true };
-    },
-  };
 }

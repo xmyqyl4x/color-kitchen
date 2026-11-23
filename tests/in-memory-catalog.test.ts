@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createInMemoryCatalogClient, inMemoryGuideAdmission } from '../src/db/in-memory-catalog.js';
+import { createInMemoryCatalogClient } from '../src/db/in-memory-catalog.js';
 import { nearestPublishedColor, publicCatalogDetail, publicCatalogListing } from '../src/catalog/public.js';
 import { catalogHttp } from '../src/http/public-catalog.js';
 import { publishedDiscoveryTopics } from '../src/web/discovery-topics.js';
 import { resolveCliRuntime } from '../src/http/cli-env.js';
 import { webHttp } from '../src/web/http.js';
 
-test('resolveCliRuntime handles empty placeholders, URLs with paths, and strict production origins', () => {
+test('resolveCliRuntime handles empty placeholders and URLs with paths in development', () => {
   const warnings: string[] = [];
   const warn = (msg: string) => warnings.push(msg);
 
@@ -37,25 +37,30 @@ test('resolveCliRuntime handles empty placeholders, URLs with paths, and strict 
     COLOR_KITCHEN_ORIGIN: 'https://…run.app',
   }, warn);
   assert.equal(placeholder.runtime.origin, undefined);
+});
 
-  // Production with valid origin stays strict
-  const prod = resolveCliRuntime({
+test('production startup requires a public origin and PostgreSQL connection URL', () => {
+  const env = {
     NODE_ENV: 'production',
     HOST: '0.0.0.0',
     PORT: '8080',
     COLOR_KITCHEN_ORIGIN: 'https://color-kitchen.com',
     COLOR_KITCHEN_INDEXING: 'false',
-  }, warn);
+    DATABASE_URL: 'postgresql://ck_runtime@localhost/color_kitchen?host=%2Fcloudsql%2Fexample%3Aus-west1%3Ainstance',
+  };
+  const prod = resolveCliRuntime(env);
   assert.equal(prod.isProduction, true);
   assert.equal(prod.runtime.origin, 'https://color-kitchen.com');
   assert.equal(prod.runtime.port, 8080);
   assert.equal(prod.runtime.indexing, false);
+  assert.equal(prod.connectionString, env.DATABASE_URL);
 
-  // Production with invalid origin still throws RangeError
-  assert.throws(() => resolveCliRuntime({
-    NODE_ENV: 'production',
-    COLOR_KITCHEN_ORIGIN: 'https://color-kitchen.com/en',
-  }, warn), /COLOR_KITCHEN_ORIGIN/);
+  for (const origin of [undefined, '  ', 'https://color-kitchen.com/en']) {
+    assert.throws(() => resolveCliRuntime({ ...env, COLOR_KITCHEN_ORIGIN: origin }), /COLOR_KITCHEN_ORIGIN/);
+  }
+  for (const database of [undefined, '  ']) {
+    assert.throws(() => resolveCliRuntime({ ...env, DATABASE_URL: database }), /DATABASE_URL/);
+  }
 });
 
 test('in-memory catalog serves seeded palettes, colors, gradients, fonts, and topics', async () => {
@@ -98,10 +103,6 @@ test('in-memory catalog serves seeded palettes, colors, gradients, fonts, and to
   const topics = await publishedDiscoveryTopics(client);
   assert.ok(topics.some(t => t.screen === 'palettes' && t.slug === 'earthy'));
   assert.ok(topics.some(t => t.screen === 'gradients' && t.slug === 'linear'));
-
-  const admission = inMemoryGuideAdmission();
-  const reserved = await admission.reserve(100, new Date());
-  assert.equal(reserved.accepted, true);
 });
 
 test('webHttp and catalogHttp render all major routes cleanly against the in-memory catalog', async () => {

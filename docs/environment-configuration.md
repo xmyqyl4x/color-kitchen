@@ -30,7 +30,7 @@ Set the production origin and indexing flag on the selected Google Cloud service
 | `COLOR_KITCHEN_INDEXING` | `false` for the test service. Set `true` when the production domain is ready for indexing. |
 | `COLOR_KITCHEN_MEASUREMENT` | `false` for the initial deployment. Set `true` when enabling consented palette usage measurement. |
 
-When `COLOR_KITCHEN_ORIGIN` and `DATABASE_URL` are both set, the server connects directly to PostgreSQL without falling back to the in-memory catalog and enforces `frame-ancestors 'none'` in `Content-Security-Policy`. Use the same hostname in your browser that you configured in `COLOR_KITCHEN_ORIGIN`.
+The production server requires `COLOR_KITCHEN_ORIGIN` and `DATABASE_URL` before it starts listening. It uses PostgreSQL for catalog data and enforces `frame-ancestors 'none'` in `Content-Security-Policy`. Use the same hostname in your browser that you configured in `COLOR_KITCHEN_ORIGIN`.
 
 For Cloud SQL for PostgreSQL using the Cloud Run Unix socket connection, format the `DATABASE_URL` secret as:
 
@@ -57,7 +57,7 @@ Apply [database migrations](database.md) against the intended environment before
 | Integration | Settings owned by the deployment |
 | --- | --- |
 | Staff and project sign-in | `COLOR_KITCHEN_IDENTITY_ISSUER`, `COLOR_KITCHEN_IDENTITY_AUDIENCE`, and `COLOR_KITCHEN_IDENTITY_PUBLIC_KEY`. Coordinate them with the identity gateway. [Private HTTP contract](private-http.md) |
-| Hosted Color Guide | `AI_GATEWAY_API_KEY`, `COLOR_KITCHEN_GUIDE_MODEL`, `COLOR_KITCHEN_GUIDE_REQUESTS_PER_MINUTE`, and `COLOR_KITCHEN_GUIDE_DAILY_UNITS`. The local Guide works independently. |
+| Hosted Color Guide | `AI_GATEWAY_API_KEY`, `COLOR_KITCHEN_GUIDE_MODEL`, `COLOR_KITCHEN_GUIDE_REQUESTS_PER_MINUTE`, and `COLOR_KITCHEN_GUIDE_DAILY_UNITS`. Hosted requests require PostgreSQL to reserve budget. The local Guide works independently. |
 | Inquiry encryption | `COLOR_KITCHEN_CONTACT_KEY_ID`, `COLOR_KITCHEN_CONTACT_ENCRYPT_KEY`, `COLOR_KITCHEN_CONTACT_HMAC_KEY`, and `COLOR_KITCHEN_CONTACT_RETENTION_DAYS`. The encryption and HMAC keys are 32 bytes each, encoded as hexadecimal in the secret store. |
 | Inquiry delivery | `COLOR_KITCHEN_INQUIRY_WEBHOOK`, `COLOR_KITCHEN_INQUIRY_TOKEN`, and `COLOR_KITCHEN_INQUIRY_DEDUP_MS`. Use the approved HTTPS receiver and its retry and deduplication agreement. |
 | Advertising and measurement | `COLOR_KITCHEN_AD_FRAME_URL`, `COLOR_KITCHEN_MEASUREMENT`, `COLOR_KITCHEN_CONSENT_KEY`, and `COLOR_KITCHEN_EVENT_KEY`. Use approved environment-specific values. [Public HTTP contract](public-http.md) |

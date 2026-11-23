@@ -78,7 +78,7 @@ async function runProvider(provider: GuideProvider, input: GuideProviderInput, t
 }
 
 export async function askColorGuide(input: GuideInput, dependencies: Readonly<{
-  provider?: GuideProvider; admission: GuideAdmission; now: () => Date;
+  provider?: GuideProvider; admission?: GuideAdmission; now: () => Date;
   timeoutMs?: number; signal?: AbortSignal;
   measure?: (event: Readonly<{ outcome: 'ready' | Failure; durationMs: number }>) => void;
 }>): Promise<Response> {
@@ -103,7 +103,9 @@ export async function askColorGuide(input: GuideInput, dependencies: Readonly<{
     units = bytes + guideOutputTokens + 512;
   } catch { return error('invalid-input'); }
   const timeout = dependencies.timeoutMs ?? 12_000;
-  if (!dependencies.provider || !Number.isFinite(timeout) || timeout < 1 || timeout > 60_000) return error('unavailable');
+  if (!dependencies.provider || !dependencies.admission || !Number.isFinite(timeout) || timeout < 1 || timeout > 60_000) {
+    return error('unavailable');
+  }
   try {
     const budget = await dependencies.admission.reserve(units, dependencies.now());
     if (!budget.accepted) return error('limited', budget.retryAt);

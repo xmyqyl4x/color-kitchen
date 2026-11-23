@@ -60,6 +60,9 @@ test('budgets, timeout, provider errors and invalid structured results preserve 
       return new Promise<unknown>(() => {});
     },
   };
+  assert.deepEqual(await askColorGuide(draft, { provider: stalled, now: () => when }),
+    { mode: 'hosted', status: 'error', code: 'unavailable', localAvailable: true });
+  assert.equal(providerCalls, 0);
   const deps = { provider: stalled, admission, now: () => when, timeoutMs: 10 };
   const blocked = await askColorGuide(draft, { ...deps, admission: {
     async reserve() { return { accepted: false, retryAt: when }; },

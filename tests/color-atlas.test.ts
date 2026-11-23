@@ -71,13 +71,16 @@ test('Color Atlas publishes the CSS named colors, resolves aliases, and searches
         assert.notEqual(await page.locator('.color-atlas-grid h2').first().textContent(), 'Black');
 
         await page.goto(origin + '/en/colors');
+        await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin });
         await page.getByLabel('Color family').selectOption('pink');
         await page.getByRole('button', { name: 'Search', exact: true }).click();
-        await page.getByRole('link', { name: 'Hot Pink' }).waitFor();
+        await page.waitForURL(url => url.searchParams.get('family') === 'pink');
         assert.equal(await page.getByRole('link', { name: 'Black', exact: true }).count(), 0);
         await page.getByRole('link', { name: 'Hot Pink' }).click();
-        await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin });
-        await page.getByRole('button', { name: 'Copy HEX' }).click();
+        await page.waitForURL(origin + '/en/colors/hotpink');
+        const detail = page.locator('.color-atlas-detail');
+        await detail.getByRole('button', { name: 'Copy HEX', exact: true }).click();
+        await detail.getByText('Copied.', { exact: true }).waitFor();
         assert.equal(await page.evaluate(() => navigator.clipboard.readText()), '#FF69B4');
 
         await page.goto(origin + '/en/colors?q=4782B4');

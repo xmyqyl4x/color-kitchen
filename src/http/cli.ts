@@ -15,14 +15,13 @@ import { approvedAdFrame } from '../web/shell.js';
 import { inquiryWebhook } from '../operations/inquiry-delivery.js';
 import { publicSupport } from '../operations/public-support.js';
 import { contactKeysFromEnvironment } from '../operations/contact-crypto.js';
-import { createInMemoryCatalogClient, inMemoryGuideAdmission } from '../db/in-memory-catalog.js';
+import { createInMemoryCatalogClient } from '../db/in-memory-catalog.js';
 import { resolveCliRuntime } from './cli-env.js';
 
-const { env, isProduction, hasConfiguredOrigin, runtime } = resolveCliRuntime(process.env);
-const connectionString = env.DATABASE_URL;
+const { env, isProduction, connectionString, runtime } = resolveCliRuntime(process.env);
 
 let pool: pg.Pool | undefined;
-if (isProduction && connectionString && hasConfiguredOrigin) {
+if (isProduction) {
   pool = new pg.Pool({ connectionString, ...runtime.pool });
   pool.on('error', () => console.error('An idle PostgreSQL client was disconnected.'));
 } else if (connectionString) {
@@ -70,7 +69,7 @@ const projectThemes = projectThemesHttp({ withClient, verifyIdentity });
 const adminCatalog = adminCatalogHttp({ withClient, verifyIdentity });
 const gatewayKey = env.AI_GATEWAY_API_KEY;
 const model = env.COLOR_KITCHEN_GUIDE_MODEL;
-const provider = gatewayKey && model ? aiColorGuideProvider(createGateway({ apiKey: gatewayKey })(model)) : undefined;
+const provider = pool && gatewayKey && model ? aiColorGuideProvider(createGateway({ apiKey: gatewayKey })(model)) : undefined;
 function budget(name: string) {
   const value = Number(env[name] ?? 0);
   if (!Number.isSafeInteger(value) || value < 0 || value > 1e9) {
@@ -86,7 +85,7 @@ const guide = guideHttp({ provider, now: () => new Date(),
   admission: pool ? postgresGuideAdmission(pool, {
     burst: { limit: budget('COLOR_KITCHEN_GUIDE_REQUESTS_PER_MINUTE'), windowSeconds: 60 },
     provider: { limit: budget('COLOR_KITCHEN_GUIDE_DAILY_UNITS'), windowSeconds: 86_400 },
-  }) : inMemoryGuideAdmission(),
+  }) : undefined,
 });
 function secret(name: string) {
   const setting = env[name];
