@@ -1,13 +1,11 @@
-import { colorTools } from '../browser/editing.js';
 import { createBrowserMedia } from '../browser/media.js';
 import { colorCss } from '../color/css.js';
-import { toHex } from '../color/convert.js';
 import { parseColor } from '../color/parse.js';
-import type { ColorValue, Palette } from '../model/color.js';
-import { composePreview, type PreviewVariant, type Template } from '../preview/layout.js';
-import { shades, type Shade, type TailwindVersion } from '../tailwind/scale.js';
+import type { Palette } from '../model/color.js';
+import { composePreview, previewDefaultColors, type PreviewRole, type PreviewVariant, type Template } from '../preview/layout.js';
 import { collectionText } from './collection-text.js';
 import { colorToolsText } from './color-tools-text.js';
+import { colorCode, colorSelect, colorToken } from './color-controls.js';
 import { readActivePalette } from './draft.js';
 import { previewToolsText } from './preview-tools-text.js';
 import { clientLocale, get, node } from './ui.js';
@@ -17,13 +15,13 @@ const t = (key: Parameters<typeof previewToolsText>[1]) => previewToolsText(loca
 const media = createBrowserMedia();
 const status = get('preview-status');
 const select = (id: string) => get<HTMLSelectElement>(id);
-const input = (id: string) => get<HTMLInputElement>(id);
 const format = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const palette: Palette = readActivePalette()?.palette ?? { roles: {},
   swatches: ['#213C35', '#6F8F7B', '#E4B363', '#E9DED0', '#F8F5EF'].map((hex, index) =>
     ({ id: 'preview-' + index, locked: false, color: parseColor(hex) })) };
+const swatches = new Map(palette.swatches.map(({ id, color }) => [id, color]));
 function addSwatches(target: HTMLSelectElement) {
-  for (const swatch of palette.swatches) target.add(new Option(toHex(swatch.color).hex, swatch.id));
+  for (const [id, color] of swatches) target.add(new Option(colorCode(color), id));
 }
 function listen(id: string, event: string, action: () => void) { get(id).addEventListener(event, action); }
 function textFile(text: string, filename: string, mime: string) {
@@ -39,15 +37,23 @@ function mountPreview() {
     viewport: select('preview-size').value as PreviewVariant['viewport'] });
   const mapped = () => ({ ...palette, roles: Object.fromEntries(mappings.filter(select => select.value)
     .map(select => [select.dataset.previewRole!, select.value])) });
+  let defaults = previewDefaultColors(variant().theme);
   let inspected = '';
-  for (const field of mappings) {
-    field.add(new Option(t('default'), ''));
+  const pickers = mappings.map(field => {
+    const role = field.dataset.previewRole as PreviewRole;
+    field.add(new Option(t('default') + ' · ' + colorCode(defaults[role]), ''));
     addSwatches(field);
-    const role = field.dataset.previewRole!;
     field.value = Object.hasOwn(palette.roles, role) ? palette.roles[role]! : '';
+    const picker = colorSelect(field, id => id ? swatches.get(id) : defaults[role]);
     field.addEventListener('change', render);
-  }
+    return { field, role, picker };
+  });
   function render() {
+    defaults = previewDefaultColors(variant().theme);
+    for (const { field, role, picker } of pickers) {
+      field.options[0]!.text = t('default') + ' · ' + colorCode(defaults[role]);
+      picker.refresh();
+    }
     const plan = composePreview(template(), variant(), mapped());
     canvas.style.aspectRatio = plan.width + ' / ' + plan.height;
     canvas.style.maxWidth = plan.width + 'px';
@@ -79,9 +85,10 @@ function mountPreview() {
   function showPair(block?: ReturnType<typeof composePreview>['blocks'][number]) {
     if (!block?.pair) { description.replaceChildren(); return; }
     const { pair } = block;
-    description.replaceChildren(node('strong', block.label ?? ''), node('p',
-      toHex(pair.foreground).hex + ' / ' + toHex(pair.background).hex + ' · ' + format.format(pair.ratio) + ' : 1 · AA ' +
-        colorToolsText(locale, pair.normal.aa.passes ? 'pass' : 'fail')));
+    const samples = node('p', undefined, 'color-pair');
+    samples.append(colorToken(pair.foreground), ' / ', colorToken(pair.background),
+      ' · ' + format.format(pair.ratio) + ' : 1 · AA ' + colorToolsText(locale, pair.normal.aa.passes ? 'pass' : 'fail'));
+    description.replaceChildren(node('strong', block.label ?? ''), samples);
   }
   for (const id of ['preview-template', 'preview-theme', 'preview-size']) listen(id, 'change', render);
   listen('preview-reset', 'click', () => { for (const field of mappings) field.value = ''; render(); });
@@ -103,76 +110,4 @@ function mountPreview() {
   render();
 }
 
-function mountTailwind() {
-  const base = select('tw-base');
-  const shade = select('tw-override');
-  const colorField = input('tw-override-color');
-  const output = get<HTMLTextAreaElement>('tw-output');
-  const version = () => Number(select('tw-version').value) as TailwindVersion;
-  const anchor = () => Number(select('tw-anchor').value) as Shade;
-  const overrides: Partial<Record<Shade, ColorValue>> = {};
-  addSwatches(base);
-  function render() {
-    try {
-      const color = palette.swatches.find(item => item.id === base.value)!.color;
-      const pinned = anchor();
-      const edits = { ...overrides };
-      delete edits[pinned];
-      const scale = colorTools.tailwind.generate({ base: color, name: input('tw-name').value, anchor: pinned, overrides: edits });
-      const activeVersion = version();
-      const exported = media.export.tailwindText(scale, { version: activeVersion, space: activeVersion === 3 ? 'srgb' : 'oklch' });
-      output.value = exported.text;
-      status.textContent = exported.gamutMapped.length ? collectionText(locale, 'gamut') : '';
-      const strips = shades.map(shade => {
-        const item = node('div', undefined, 'tailwind-shade');
-        item.dataset.shade = String(shade);
-        const tile = node('span');
-        tile.style.backgroundColor = colorCss(scale.colors[shade]);
-        item.append(tile, node('span', String(shade)), node('code', toHex(scale.colors[shade]).hex));
-        return item;
-      });
-      get('tw-scale').replaceChildren(...strips);
-      const fg = scale.colors[900];
-      const bg = scale.colors[100];
-      const result = colorTools.tailwind.contrast(scale, 900, 100, parseColor('#FFF'));
-      const sample = node('p', t('sample') + ' · ' + format.format(result.ratio) + ' : 1', 'tailwind-sample');
-      sample.style.backgroundColor = colorCss(bg);
-      sample.style.color = colorCss(fg);
-      get('tw-sample').replaceChildren(sample);
-      const family = select('tw-built').value;
-      const built = family ? colorTools.tailwind.inspect(activeVersion, family) : null;
-      get('tw-built-result').textContent = built ? built.name + ' · v' + built.version + ' · 500 ' + built.colors[500] : '';
-      get<HTMLButtonElement>('tw-download').disabled = get<HTMLButtonElement>('tw-copy').disabled = false;
-    } catch {
-      output.value = '';
-      status.textContent = t('unavailable');
-      get<HTMLButtonElement>('tw-download').disabled = get<HTMLButtonElement>('tw-copy').disabled = true;
-    }
-  }
-  for (const id of ['tw-version', 'tw-name', 'tw-base', 'tw-anchor', 'tw-built']) listen(id, 'change', render);
-  shade.addEventListener('change', () => {
-    const color = overrides[Number(shade.value) as Shade];
-    colorField.value = color ? colorCss(color) : '';
-  });
-  listen('tw-apply', 'click', () => {
-    try {
-      const key = Number(shade.value) as Shade;
-      if (key === anchor()) throw new RangeError('Cannot override a pinned shade.');
-      overrides[key] = parseColor(colorField.value);
-      render();
-    } catch { status.textContent = t('unavailable'); }
-  });
-  listen('tw-clear', 'click', () => { delete overrides[Number(shade.value) as Shade]; colorField.value = ''; render(); });
-  listen('tw-download', 'click', () => {
-    if (output.value) textFile(output.value, version() === 3 ? 'tailwind.config.cjs' : 'theme.css',
-      version() === 3 ? 'text/javascript' : 'text/css');
-  });
-  get('tw-copy').addEventListener('click', async () => {
-    const result = await media.files.copyText(output.value);
-    status.textContent = collectionText(locale, result.copied ? 'copied' : 'select');
-    if (!result.copied) { output.focus(); output.select(); }
-  });
-  render();
-}
-
-if (document.querySelector('[data-preview-mode="design-preview"]')) mountPreview(); else mountTailwind();
+mountPreview();

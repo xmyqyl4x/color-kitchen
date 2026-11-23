@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { bundledFontFiles } from '../catalog/bundled-fonts.js';
 import { publicCatalogDetail } from '../catalog/public.js';
 import { slugPattern } from '../catalog/repository.js';
 import type { CatalogHttpDependencies } from '../http/public-catalog.js';
@@ -11,6 +12,7 @@ import { collectionScreen } from './collection.js';
 import { imageToolsScreen } from './image-tools.js';
 import { colorToolsScreen } from './color-tools.js';
 import { previewToolsScreen } from './preview-tools.js';
+import { tailwindStudio } from './tailwind-studio.js';
 import { discoveryKinds, discoveryPage } from './discovery.js';
 import { gradientToolsScreen } from './gradient-tools.js';
 import { fontToolsPage } from './font-tools.js';
@@ -24,14 +26,17 @@ const fileRoutes: Record<string, [string, string]> = {
   '/assets/kitchen.css': ['../../../src/web/kitchen.css', 'text/css; charset=utf-8'],
   '/assets/source-sans.woff2': ['../../../catalog/fonts/SourceSans3-Regular.woff2', 'font/woff2'],
   '/assets/source-sans-license.txt': ['../../../catalog/fonts/SourceSans3-OFL.txt', 'text/plain; charset=utf-8'],
-  '/assets/fonts/SourceSans3-Regular.woff2': ['../../../catalog/fonts/SourceSans3-Regular.woff2', 'font/woff2'],
   '/vendor/pdf-lib.js': ['../../../node_modules/pdf-lib/dist/pdf-lib.esm.min.js', 'text/javascript; charset=utf-8'],
 };
-const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/(?:messages|admin-errors)|guide\/(?:local|response)|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text|ui|collection-client|collection-text|export-drawer|image-tools-client|image-tools-text|color-tools-client|color-tools-text|preview-tools-client|preview-tools-text|discovery-client|discovery-text|gradient-tools-client|gradient-tools-text|font-tools-client|font-tools-text|guide-client|guide-text|trust-client|trust-text|ad-client|admin-client|admin-text))\.js$/;
+const clientModule = /^\/src\/(?:(?:browser|color|export|gradient|image|media|model|palette|preview|tailwind|typography|workspace)\/[a-z0-9-]+|i18n\/(?:messages|admin-errors)|guide\/(?:local|response)|operations\/consent|web\/(?:draft|shell-client|strings|studio-client|studio-text|ui|collection-client|collection-text|color-controls|export-drawer|image-tools-client|image-tools-text|color-tools-client|color-tools-text|preview-tools-client|preview-tools-text|tailwind-studio-client|tailwind-studio-text|discovery-client|discovery-text|gradient-tools-client|gradient-tools-text|font-tools-client|font-tools-text|guide-client|guide-text|trust-client|trust-text|ad-client|admin-client|admin-text))\.js$/;
 
 async function webFile(request: Request, path: string) {
   const asset = Object.hasOwn(fileRoutes, path) ? fileRoutes[path] : undefined;
-  const file = asset ?? (clientModule.test(path) ? ['../..' + path, 'text/javascript; charset=utf-8'] : undefined);
+  const fontPrefix = '/assets/fonts/';
+  const filename = path.startsWith(fontPrefix) ? path.slice(fontPrefix.length) : '';
+  const fontType = bundledFontFiles.get(filename);
+  const file = asset ?? (fontType ? ['../../../catalog/fonts/' + filename, fontType] :
+    clientModule.test(path) ? ['../..' + path, 'text/javascript; charset=utf-8'] : undefined);
   if (!file) return null;
   try {
     const bytes = await readFile(new URL(file[0], import.meta.url));
@@ -90,8 +95,11 @@ export function webHttp(dependencies: CatalogHttpDependencies & { adFrameUrl?: s
     if ((screen === 'contrast' || screen === 'color-inspector') && !entry) return renderShell(request, {
       ...base, content: colorToolsScreen(locale, screen), module: '/src/web/color-tools-client.js', index: true,
     });
-    if ((screen === 'design-preview' || screen === 'tailwind') && !entry) return renderShell(request, {
-      ...base, content: previewToolsScreen(locale, screen), module: '/src/web/preview-tools-client.js', index: true,
+    if (screen === 'design-preview' && !entry) return renderShell(request, {
+      ...base, content: previewToolsScreen(locale), module: '/src/web/preview-tools-client.js', index: true,
+    });
+    if (screen === 'tailwind' && !entry) return renderShell(request, {
+      ...base, content: tailwindStudio(locale), module: '/src/web/tailwind-studio-client.js', index: true,
     });
     if ((screen === 'gradient-studio' || screen === 'gradient-steps') && !entry) return renderShell(request, {
       ...base, content: gradientToolsScreen(locale, screen), module: '/src/web/gradient-tools-client.js', index: true,

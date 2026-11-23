@@ -28,7 +28,7 @@ const text = {
   invalid: ['Enter valid colors and an opaque backing when needed.', 'Vérifiez les couleurs et le fond opaque si nécessaire.',
     'Introduce colores válidos y una base opaca si hace falta.', 'Introduza cores válidas e uma base opaca quando necessário.',
     'Geben Sie gültige Farben und bei Bedarf eine undurchsichtige Unterlage ein.'],
-  active: ['Choose from active palette', 'Choisir dans la palette active', 'Elegir de la paleta activa', 'Escolher da paleta ativa', 'Aus aktiver Palette wählen'],
+  active: ['Palette swatch', 'Échantillon de palette', 'Muestra de la paleta', 'Amostra da paleta', 'Palettenfarbe'],
   manual: ['Manual input', 'Saisie manuelle', 'Entrada manual', 'Introdução manual', 'Manuelle Eingabe'],
   color: ['Color value', 'Valeur de couleur', 'Valor de color', 'Valor da cor', 'Farbwert'],
   channels: ['Numeric channels', 'Canaux numériques', 'Canales numéricos', 'Canais numéricos', 'Numerische Kanäle'],

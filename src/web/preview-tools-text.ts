@@ -24,12 +24,10 @@ const text = {
   override: ['Override shade', 'Remplacer la nuance', 'Modificar el tono', 'Substituir tom', 'Abstufung überschreiben'],
   overrideColor: ['Override color', 'Couleur de remplacement', 'Color de reemplazo', 'Cor de substituição', 'Ersatzfarbe'],
   clear: ['Clear override', 'Effacer le remplacement', 'Quitar el reemplazo', 'Limpar substituição', 'Überschreibung löschen'],
-  inspect: ['Inspect built-in family', 'Inspecter une famille intégrée', 'Inspeccionar familia incluida', 'Inspecionar família incluída', 'Mitgelieferte Farbfamilie prüfen'],
   unavailable: ['Use a valid token name, base, or color. The pinned shade stays unchanged.',
     'Vérifiez le nom, la base ou la couleur. La nuance fixe est conservée.',
     'Revisa el nombre, base o color. El tono fijado se conserva.',
     'Verifique o nome, a base ou a cor. O tom fixo mantém-se.',
     'Prüfen Sie Name, Grund- oder Ersatzfarbe. Die fixierte Abstufung bleibt unverändert.'],
-  sample: ['Sample text', 'Texte exemple', 'Texto de ejemplo', 'Texto de exemplo', 'Beispieltext'],
 } as const satisfies Record<string, Translation>;
 export const previewToolsText = (locale: Locale, key: keyof typeof text) => translate(locale, text[key]);

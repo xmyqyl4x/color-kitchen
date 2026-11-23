@@ -5,7 +5,7 @@ import { createBrowserMedia } from '../browser/media.js';
 import { workspaceRepository } from '../browser/repository.js';
 import { harmonyModes, type Harmony } from '../color/effects.js';
 import { messages } from '../i18n/messages.js';
-import type { ColorValue, Swatch } from '../model/color.js';
+import type { Swatch } from '../model/color.js';
 import { isLocale } from '../model/locales.js';
 import type { PaletteCommand } from '../palette/document.js';
 import { maxSwatches, minSwatches, type Temperature } from '../palette/generate.js';
@@ -14,6 +14,7 @@ import { webText } from './strings.js';
 import { studioRoles, studioText } from './studio-text.js';
 import { openExportDrawer } from './export-drawer.js';
 import { collectionText } from './collection-text.js';
+import { colorCode as originalValue, colorSelect } from './color-controls.js';
 import { node, press } from './ui.js';
 
 const locale = isLocale(document.documentElement.lang) ? document.documentElement.lang : 'en';
@@ -54,18 +55,12 @@ try {
 const api = createPaletteEditing(repository ?? {
   getDocument: unavailable, saveDocument: unavailable, deleteDocument: unavailable, restoreDocument: unavailable,
 }, initial, { now: Date.now, newId: () => crypto.randomUUID(), saved: initialDraft?.saved });
+const rolePicker = colorSelect(roleColor, value => api.snapshot().document.palette.swatches.find(swatch => swatch.id === value)?.color);
 let proposed: ReturnType<typeof api.propose> | undefined;
 
 function report(error: unknown) {
   const key = error instanceof EditingError ? error.messageId : 'editing.error.invalid';
   status.textContent = messages[locale][key];
-}
-
-function originalValue(color: ColorValue) {
-  const inspected = colorTools.inspect(color);
-  if (color.space === 'srgb' && [...color.components, color.alpha].every(channel =>
-    Math.abs(Math.round(channel * 255) / 255 - channel) < 1e-12)) return inspected.hex.hex;
-  return inspected.css;
 }
 
 function action(label: string, id: string, control: string, onClick: () => void) {
@@ -86,8 +81,9 @@ function resetPreview() {
 
 function renderRoles(swatches: readonly Swatch[], roles: PaletteDocument['palette']['roles']) {
   roleColor.replaceChildren(new Option(t('none'), ''), ...swatches.map(({ id, color }, index) =>
-    new Option(t('swatch') + ' ' + (index + 1) + ' · ' + colorTools.inspect(color).hex.hex, id)));
+    new Option(t('swatch') + ' ' + (index + 1) + ' · ' + originalValue(color), id)));
   roleColor.value = Object.hasOwn(roles, role.value) ? roles[role.value]! : '';
+  rolePicker.refresh();
 }
 
 function sync(redraw = true) {

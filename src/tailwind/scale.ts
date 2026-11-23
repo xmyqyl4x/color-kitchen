@@ -26,6 +26,11 @@ export function normalizeTokenName(name: string) {
 
 export const tailwindVersions = { 3: '3.4.19', 4: '4.3.5' } as const;
 
+export function builtInFamilies(version: TailwindVersion) {
+  checkVersion(version);
+  return Object.keys(pinnedColors[version]);
+}
+
 export function inspectBuiltInScale(version: TailwindVersion, name: string) {
   checkVersion(version);
   const key = normalizeTokenName(name);

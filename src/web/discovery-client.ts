@@ -11,6 +11,7 @@ import type { ColorValue, Palette } from '../model/color.js';
 import { createConsentSession } from '../operations/consent.js';
 import { checkPalette } from '../palette/document.js';
 import { collectionText } from './collection-text.js';
+import { colorInput, colorToken } from './color-controls.js';
 import { readActiveDraft, readGradientDraft, storeActivePalette, storeGradientDraft } from './draft.js';
 import { discoveryText } from './discovery-text.js';
 import { clientLocale, node } from './ui.js';
@@ -20,6 +21,15 @@ const t = (key: Parameters<typeof discoveryText>[1]) => discoveryText(locale, ke
 const c = (key: Parameters<typeof collectionText>[1]) => collectionText(locale, key);
 const media = createBrowserMedia();
 const consent = createConsentSession(firstPartyConsentAdapter(async () => {}));
+const search = document.querySelector<HTMLInputElement>('.discovery-form input[name=q]');
+if (search) colorInput(search, value => {
+  const query = value.trim();
+  if (query.startsWith('#')) return parseColor(query);
+  if (/\/(?:colors|gradients)$/.test(location.pathname) && /^(?:[a-f0-9]{3}|[a-f0-9]{6})$/i.test(query)) {
+    return parseColor('#' + query);
+  }
+  return undefined;
+}, false);
 
 function localDocument(name: string, content: { kind: 'palette'; palette: Palette } |
     ({ kind: 'gradient' } & Gradient)): PaletteDocument | GradientDocument {
@@ -33,13 +43,18 @@ for (const element of document.querySelectorAll<HTMLElement>('[data-catalog-item
     const { title, kind, itemId, payload } = JSON.parse(element.dataset.catalogItem!);
     let item: CreativeDocument;
     let color: ColorValue | undefined;
+    let background: string | undefined;
     if (kind === 'gradient') {
       const gradient: Gradient = { ...payload, stops: payload.stops.map((stop: Gradient['stops'][number], index: number) =>
         ({ ...stop, id: stop.id ?? 'stop-' + index })) };
       validateGradient(gradient);
       item = localDocument(title, { ...gradient, kind: 'gradient' });
-      strip.style.backgroundImage = gradientCss(gradient);
-      strip.style.height = '4.5rem';
+      background = gradientCss(gradient);
+      strip.style.backgroundImage = background;
+      for (const [index, code] of [...element.querySelectorAll('.gallery-stops code')].entries()) {
+        const stop = gradient.stops[index];
+        if (stop) code.replaceWith(colorToken(stop.color));
+      }
     } else {
       let palette: Palette = payload;
       if (kind === 'color') {
@@ -58,8 +73,8 @@ for (const element of document.querySelectorAll<HTMLElement>('[data-catalog-item
       }
     }
     const source = item;
-    const copy = source.kind === 'gradient' ? media.export.gradientText(source) :
-      color ? colorCss(color) : source.kind === 'palette' ? media.export.paletteText(source.palette, 'hex').text : '';
+    const copy = background ? 'background-image: ' + background + ';' :
+      color ? toHex(color).hex : source.kind === 'palette' ? media.export.paletteText(source.palette, 'hex').text : '';
     for (const button of element.querySelectorAll<HTMLButtonElement>('[data-catalog-action]')) {
       button.disabled = false;
       button.addEventListener('click', async () => {

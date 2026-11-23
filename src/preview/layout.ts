@@ -39,22 +39,26 @@ const roleDefaults = {
   dark: { background: '#14211B', surface: '#23382D', text: '#F6F3EA', primary: '#9DBCA9', accent: '#DDB16B', 'on-primary': '#14211B' },
 } as const;
 
+export function previewDefaultColors(theme: PreviewVariant['theme']) {
+  return Object.fromEntries(Object.entries(roleDefaults[theme]).map(([role, value]) => [role, parseColor(value)])) as Record<PreviewRole, ColorValue>;
+}
+
 export function composePreview(template: Template, variant: PreviewVariant, palette: Palette) {
   if (!Object.hasOwn(templates, template) || !Object.hasOwn(roleDefaults, variant.theme) ||
       (variant.viewport !== 'desktop' && variant.viewport !== 'mobile')) throw new RangeError('Unsupported preview template or variant.');
   const [width, height] = variant.viewport === 'desktop' ? [720, 450] : [360, 600];
-  const defaults = roleDefaults[variant.theme];
+  const defaults = previewDefaultColors(variant.theme);
   const swatches = new Map(palette.swatches.map(swatch => [swatch.id, swatch.color]));
   if (swatches.size !== palette.swatches.length) throw new RangeError('Preview roles need unique swatch IDs.');
   const resolve = (role: PreviewRole): ColorValue => {
     const id = palette.roles[role];
-    if (id === undefined) return parseColor(defaults[role]);
+    if (id === undefined) return defaults[role];
     const color = swatches.get(id);
     if (!color) throw new RangeError(`Preview role ${role} refers to an unavailable swatch.`);
     return color;
   };
   const roles = Object.fromEntries(Object.keys(defaults).map(role => [role, resolve(role as PreviewRole)])) as Record<PreviewRole, ColorValue>;
-  const defaultBacking = parseColor(defaults.background);
+  const defaultBacking = defaults.background;
   const background = checkContrast(defaultBacking, roles.background, defaultBacking).background;
   const surface = checkContrast(defaultBacking, roles.surface, background).background;
   const blocks = templates[template].map(slot => {

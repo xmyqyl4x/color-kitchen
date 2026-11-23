@@ -1,0 +1,303 @@
+import type { PaletteMood } from './palette-moods.js';
+import { baseGradients } from './base-gradients.js';
+import { additionalFonts } from './bundled-fonts.js';
+import { namedColorCatalog } from './named-colors.js';
+import { sampleCatalog } from './sample-data.js';
+import type { CatalogSeed } from './seed.js';
+
+type Copy = readonly [title: string, summary: string];
+
+function palette(id: number, slug: string, mood: PaletteMood, colors: readonly string[],
+  [en, fr, es, pt, de]: readonly [Copy, Copy, Copy, Copy, Copy]): Extract<CatalogSeed, { kind: 'palette' }> {
+  const translation = ([title, summary]: Copy) => ({ title, summary });
+  return {
+    itemId: 'b5023130-cc11-4b97-8dce-' + String(id).padStart(12, '0'), kind: 'palette', slug, revision: 1,
+    featuredRank: id + 1, mood, colors, attribution: 'Color Kitchen',
+    translations: { en: translation(en), fr: translation(fr), es: translation(es), pt: translation(pt), de: translation(de) },
+  };
+}
+
+const gallery = [
+  palette(1, 'cedar-and-clay', 'earthy', ['#292F25', '#59604A', '#A85C48', '#CA9473', '#E8D6BE'], [
+    ['Cedar and Clay', 'Cedar green and olive ground fired clay, dusty peach and sand.'],
+    ['Cèdre et argile', 'Vert cèdre et olive avec argile cuite, pêche poudrée et sable.'],
+    ['Cedro y arcilla', 'Verde cedro y oliva con arcilla cocida, melocotón apagado y arena.'],
+    ['Cedro e argila', 'Verde-cedro e oliva com argila cozida, pêssego suave e areia.'],
+    ['Zeder und Ton', 'Zederngrün und Oliv mit gebranntem Ton, blassem Pfirsich und Sand.'],
+  ]),
+  palette(2, 'lavender-milk', 'pastel', ['#F9EFF6', '#DFCDEF', '#B8ACDE', '#A9C9D8', '#EDF7F5'], [
+    ['Lavender Milk', 'Milky pink and lilac soften dusty lavender, mist blue and pale mint.'],
+    ['Lait de lavande', 'Rose laiteux et lilas adoucissent le lavande, le bleu brume et la menthe claire.'],
+    ['Leche de lavanda', 'Rosa lechoso y lila con lavanda suave, azul niebla y menta pálida.'],
+    ['Leite de lavanda', 'Rosa leitoso e lilás com lavanda suave, azul-neblina e menta clara.'],
+    ['Lavendelmilch', 'Milchiges Rosa und Flieder mit mattem Lavendel, Nebelblau und heller Minze.'],
+  ]),
+  palette(3, 'cobalt-and-tangerine', 'bold', ['#101C38', '#2254D8', '#F36B27', '#FFB448', '#FFF0D6'], [
+    ['Cobalt and Tangerine', 'Cobalt and navy meet tangerine, amber and a pale cream.'],
+    ['Cobalt et mandarine', 'Cobalt et bleu marine rencontrent mandarine, ambre et crème claire.'],
+    ['Cobalto y mandarina', 'Cobalto y azul marino junto a mandarina, ámbar y crema pálida.'],
+    ['Cobalto e tangerina', 'Azul-cobalto e marinho com tangerina, âmbar e creme claro.'],
+    ['Kobalt und Mandarine', 'Kobalt- und Marineblau treffen auf Mandarine, Bernstein und helles Creme.'],
+  ]),
+  palette(4, 'midnight-plum', 'moody', ['#171321', '#2C1B3C', '#482D53', '#744263', '#AB7185'], [
+    ['Midnight Plum', 'Near-black violet deepens plum, mulberry and dusty rose.'],
+    ['Prune de minuit', 'Un violet presque noir approfondit la prune, la mûre et le rose poudré.'],
+    ['Ciruela de medianoche', 'Violeta casi negro con ciruela, mora y rosa empolvado.'],
+    ['Ameixa da meia-noite', 'Violeta quase preto com ameixa, amora e rosa antigo.'],
+    ['Mitternachtspflaume', 'Fast schwarzes Violett vertieft Pflaume, Maulbeere und Altrosa.'],
+  ]),
+  palette(5, 'chalk-and-charcoal', 'minimal', ['#252729', '#66686A', '#AAADAE', '#F3F3EE'], [
+    ['Chalk and Charcoal', 'A four-color grayscale from charcoal through slate and silver to chalk.'],
+    ['Craie et charbon', 'Quatre gris du charbon à la craie, en passant par l’ardoise et l’argent.'],
+    ['Tiza y carbón', 'Cuatro grises desde el carbón hasta la tiza, con pizarra y plata.'],
+    ['Giz e carvão', 'Quatro tons de cinza, do carvão ao giz, passando pela ardósia e prata.'],
+    ['Kreide und Kohle', 'Vier Graustufen von Kohle über Schiefer und Silber bis Kreide.'],
+  ]),
+  palette(6, 'diner-cherry', 'retro', ['#752935', '#C64044', '#F27D71', '#67AFA2', '#F8EAC9'], [
+    ['Diner Cherry', 'Cherry red and coral pair with vintage mint and vanilla cream.'],
+    ['Cerise rétro', 'Rouge cerise et corail avec menthe rétro et crème vanille.'],
+    ['Cereza retro', 'Rojo cereza y coral con verde menta y crema de vainilla.'],
+    ['Cereja retro', 'Vermelho-cereja e coral com menta e creme de baunilha.'],
+    ['Kirschrot im Diner', 'Kirschrot und Koralle mit Mintgrün und Vanillecreme.'],
+  ]),
+  palette(7, 'cucumber-spring', 'fresh', ['#205548', '#48A477', '#96CD91', '#D5EBB1', '#F4F9DE'], [
+    ['Cucumber Spring', 'Cucumber green lifts into spearmint, spring leaf and pale lime.'],
+    ['Concombre de printemps', 'Le vert concombre s’éclaircit en menthe, feuille tendre et citron vert pâle.'],
+    ['Pepino de primavera', 'Verde pepino con menta, hojas tiernas y lima pálida.'],
+    ['Pepino de primavera', 'Verde-pepino com menta, folhas novas e lima clara.'],
+    ['Gurkengrüner Frühling', 'Gurkengrün geht in Minze, frisches Blattgrün und helle Limette über.'],
+  ]),
+  palette(8, 'honey-and-apricot', 'warm', ['#733D28', '#BE6D35', '#E5A541', '#F7C188', '#FBE8CC'], [
+    ['Honey and Apricot', 'Honey gold, apricot and pale cream over toasted amber and brown.'],
+    ['Miel et abricot', 'Or de miel, abricot et crème claire sur des tons ambrés et bruns.'],
+    ['Miel y albaricoque', 'Dorado miel, albaricoque y crema clara sobre ámbar tostado y marrón.'],
+    ['Mel e damasco', 'Dourado de mel, damasco e creme claro sobre âmbar tostado e castanho.'],
+    ['Honig und Aprikose', 'Honiggold, Aprikose und Creme auf warmem Bernstein und Braun.'],
+  ]),
+  palette(9, 'moss-and-bark', 'earthy', ['#332A24', '#51463A', '#555D42', '#858765', '#B8B394', '#DDD3B7'], [
+    ['Moss and Bark', 'Rough bark browns, moss greens and pale lichen in six muted steps.'],
+    ['Mousse et écorce', 'Bruns d’écorce, verts mousse et lichen pâle en six tons feutrés.'],
+    ['Musgo y corteza', 'Marrones de corteza, verdes musgo y liquen pálido en seis tonos apagados.'],
+    ['Musgo e casca', 'Castanhos de casca, verdes de musgo e líquen claro em seis tons suaves.'],
+    ['Moos und Rinde', 'Rindenbraun, Moosgrün und helle Flechten in sechs gedämpften Stufen.'],
+  ]),
+  palette(10, 'buttercup-fog', 'pastel', ['#F9F0BB', '#F7DBB4', '#EACFD9', '#D0D6EF', '#D9E8DD'], [
+    ['Buttercup Fog', 'Soft butter yellow and peach sit beside misty pink, periwinkle and sage.'],
+    ['Brume de bouton d’or', 'Jaune beurre et pêche côtoient rose brumeux, pervenche et sauge.'],
+    ['Bruma de ranúnculo', 'Amarillo mantequilla y melocotón con rosa brumoso, azul violáceo y salvia.'],
+    ['Névoa de ranúnculo', 'Amarelo-manteiga e pêssego com rosa suave, azul-lilás e sálvia.'],
+    ['Butterblumennebel', 'Buttergelb und Pfirsich neben nebligem Rosa, Immergrünblau und Salbei.'],
+  ]),
+  palette(11, 'magenta-and-citron', 'bold', ['#301D45', '#B82077', '#ED4894', '#E5D735', '#F5F1A1'], [
+    ['Magenta and Citron', 'Bright magenta and pink set off citron yellow against aubergine.'],
+    ['Magenta et cédrat', 'Magenta et rose vif font ressortir le jaune cédrat sur fond aubergine.'],
+    ['Magenta y cidra', 'Magenta y rosa vivo resaltan el amarillo cidra sobre berenjena.'],
+    ['Magenta e cidra', 'Magenta e rosa intenso destacam o amarelo-cidra sobre berinjela.'],
+    ['Magenta und Zitrone', 'Leuchtendes Magenta und Pink heben Zitronengelb vor Aubergine hervor.'],
+  ]),
+  palette(12, 'deep-harbor', 'moody', ['#101C25', '#1A2E3A', '#244A52', '#35676B', '#608086'], [
+    ['Deep Harbor', 'Ink blue, dark teal and slate recall the quiet water in a harbor.'],
+    ['Port profond', 'Bleu encre, bleu canard sombre et ardoise évoquent l’eau calme d’un port.'],
+    ['Puerto profundo', 'Azul tinta, verde azulado oscuro y pizarra evocan un puerto en calma.'],
+    ['Porto profundo', 'Azul-tinta, verde-azulado escuro e ardósia evocam a água calma de um porto.'],
+    ['Tiefer Hafen', 'Tintenblau, dunkles Petrol und Schiefer erinnern an ruhiges Hafenwasser.'],
+  ]),
+  palette(13, 'paper-and-putty', 'minimal', ['#3D3834', '#837971', '#C6BCB0', '#E4DBCF', '#FBF7EF'], [
+    ['Paper and Putty', 'A quiet set of ink brown, warm gray, putty, parchment and paper white.'],
+    ['Papier et mastic', 'Brun encre, gris chaud, mastic, parchemin et blanc papier.'],
+    ['Papel y masilla', 'Marrón tinta, gris cálido, masilla, pergamino y blanco papel.'],
+    ['Papel e massa', 'Castanho-tinta, cinza quente, bege, pergaminho e branco-papel.'],
+    ['Papier und Kitt', 'Tintenbraun, warmes Grau, Kitt, Pergament und Papierweiß.'],
+  ]),
+  palette(14, 'avocado-and-mustard', 'retro', ['#403224', '#677345', '#9D9F53', '#CE963C', '#EAD4A4'], [
+    ['Avocado and Mustard', 'Avocado greens and mustard gold over dark wood and beige.'],
+    ['Avocat et moutarde', 'Verts avocat et or moutarde sur bois foncé et beige.'],
+    ['Aguacate y mostaza', 'Verdes aguacate y dorado mostaza sobre madera oscura y beige.'],
+    ['Abacate e mostarda', 'Verdes de abacate e dourado-mostarda sobre madeira escura e bege.'],
+    ['Avocado und Senf', 'Avocadogrün und Senfgold auf dunklem Holz und Beige.'],
+  ]),
+  palette(15, 'lagoon-glass', 'fresh', ['#165C66', '#2D8D92', '#52BDB3', '#91D9CD', '#D6F4E9'], [
+    ['Lagoon Glass', 'Clear turquoise shifts from deep lagoon teal to translucent seafoam tones.'],
+    ['Verre de lagon', 'Le turquoise passe du bleu canard profond aux tons clairs d’écume.'],
+    ['Vidrio de laguna', 'El turquesa pasa de un verde azulado profundo a tonos claros de espuma marina.'],
+    ['Vidro de lagoa', 'O turquesa passa do verde-azulado profundo aos tons claros de espuma do mar.'],
+    ['Lagunenglas', 'Klares Türkis reicht von tiefem Petrol bis zu hellem Meerschaumgrün.'],
+  ]),
+  palette(16, 'paprika-and-peach', 'warm', ['#713021', '#A7462D', '#D1693E', '#EBA47C', '#FFE0C9'], [
+    ['Paprika and Peach', 'Smoky paprika and roasted red soften into terracotta and fresh peach.'],
+    ['Paprika et pêche', 'Le paprika fumé et le rouge grillé s’adoucissent en terre cuite et pêche.'],
+    ['Pimentón y melocotón', 'Pimentón ahumado y rojo tostado que se suavizan hacia terracota y melocotón.'],
+    ['Páprica e pêssego', 'Páprica defumada e vermelho tostado suavizam em terracota e pêssego.'],
+    ['Paprika und Pfirsich', 'Rauchiges Paprikarot wird über Terrakotta zu frischem Pfirsich.'],
+  ]),
+  palette(17, 'desert-sandstone', 'earthy', ['#5C4338', '#9C644E', '#C88865', '#D9AA84', '#F1D8B5'], [
+    ['Desert Sandstone', 'Umber, canyon rust and sandstone fade into sunlit sand.'],
+    ['Grès du désert', 'Terre d’ombre, rouille et grès se fondent dans le sable ensoleillé.'],
+    ['Arenisca del desierto', 'Sombra, óxido y arenisca se funden con arena iluminada.'],
+    ['Arenito do deserto', 'Terra-de-sombra, ferrugem e arenito passam para areia iluminada.'],
+    ['Wüstensandstein', 'Umbra, Rost und Sandstein gehen in sonniges Sandgelb über.'],
+  ]),
+  palette(18, 'peach-sorbet', 'pastel', ['#F7BEAE', '#FADAC1', '#FFF0D5', '#E6EBCC'], [
+    ['Peach Sorbet', 'Pale coral, peach and vanilla with a touch of light pistachio.'],
+    ['Sorbet à la pêche', 'Corail pâle, pêche et vanille avec une touche de pistache claire.'],
+    ['Sorbete de melocotón', 'Coral pálido, melocotón y vainilla con un toque de pistacho claro.'],
+    ['Sorvete de pêssego', 'Coral pálido, pêssego e baunilha com um toque de pistache claro.'],
+    ['Pfirsichsorbet', 'Blasse Koralle, Pfirsich und Vanille mit einem Hauch heller Pistazie.'],
+  ]),
+  palette(19, 'arcade-punch', 'bold', ['#181730', '#5247EC', '#1AD7DE', '#F54F7F', '#FCDC4B', '#F9F3E6'], [
+    ['Arcade Punch', 'Electric indigo, cyan, punch pink and lemon pop against deep ink.'],
+    ['Éclat d’arcade', 'Indigo électrique, cyan, rose vif et citron ressortent sur un fond encre.'],
+    ['Estallido arcade', 'Índigo eléctrico, cian, rosa intenso y limón sobre tinta oscura.'],
+    ['Explosão arcade', 'Índigo elétrico, ciano, rosa vibrante e limão sobre tinta escura.'],
+    ['Arcade-Farben', 'Elektrisches Indigo, Cyan, Pink und Zitrone leuchten vor dunkler Tinte.'],
+  ]),
+  palette(20, 'pine-at-dusk', 'moody', ['#101B17', '#1B2B21', '#2B4232', '#414C36', '#625C3D'], [
+    ['Pine at Dusk', 'Deep pine grades into forest green, shadowed olive and muted bronze.'],
+    ['Pin au crépuscule', 'Le vert pin profond passe au vert forêt, à l’olive sombre et au bronze mat.'],
+    ['Pino al anochecer', 'Verde pino profundo, verde bosque, oliva oscuro y bronce apagado.'],
+    ['Pinheiro ao anoitecer', 'Verde-pinheiro profundo, verde-floresta, oliva escura e bronze suave.'],
+    ['Kiefer in der Dämmerung', 'Dunkles Kieferngrün geht in Waldgrün, schattiges Oliv und matte Bronze über.'],
+  ]),
+  palette(21, 'pale-quartz', 'minimal', ['#C0B5BA', '#DDD3D6', '#F2E9E8', '#FAF6F3'], [
+    ['Pale Quartz', 'A light neutral set of mineral gray, rose quartz and chalky white.'],
+    ['Quartz pâle', 'Des neutres clairs, du gris minéral au blanc crayeux, avec du quartz rose.'],
+    ['Cuarzo pálido', 'Neutros claros de gris mineral a blanco tiza, con cuarzo rosa.'],
+    ['Quartzo claro', 'Neutros claros do cinza mineral ao branco-giz, com quartzo rosa.'],
+    ['Blasser Quarz', 'Helle Neutraltöne von Mineralgrau über Rosenquarz bis Kreideweiß.'],
+  ]),
+  palette(22, 'petrol-and-brass', 'retro', ['#273D41', '#486E6A', '#B68D51', '#D1AB62', '#E6D6B3'], [
+    ['Petrol and Brass', 'Vintage petrol blue and dusty teal with brushed brass and warm cream.'],
+    ['Pétrole et laiton', 'Bleu pétrole et bleu canard patiné avec laiton brossé et crème chaude.'],
+    ['Petróleo y latón', 'Azul petróleo y verde azulado apagado con latón cepillado y crema cálida.'],
+    ['Petróleo e latão', 'Azul-petróleo e verde-azulado suave com latão escovado e creme quente.'],
+    ['Petrol und Messing', 'Petrolblau und mattes Blaugrün mit gebürstetem Messing und warmem Creme.'],
+  ]),
+  palette(23, 'rainwashed-blue', 'fresh', ['#35698A', '#569BC3', '#82BFDC', '#B8DCED', '#EAF5FA'], [
+    ['Rainwashed Blue', 'Rain blue, soft cerulean and cloud white in a clean cool progression.'],
+    ['Bleu après la pluie', 'Bleu pluie, céruléen doux et blanc nuage en progression froide.'],
+    ['Azul tras la lluvia', 'Azul lluvia, cerúleo suave y blanco nube en una gama fresca.'],
+    ['Azul depois da chuva', 'Azul-chuva, cerúleo suave e branco-nuvem numa sequência fresca.'],
+    ['Blau nach dem Regen', 'Regenblau, sanftes Himmelblau und Wolkenweiß bilden eine kühle Reihe.'],
+  ]),
+  palette(24, 'cinnamon-rose', 'warm', ['#633532', '#92534A', '#BD756A', '#DB9E8A', '#F5D3BE'], [
+    ['Cinnamon Rose', 'Cinnamon brown warms a range of dusty red, antique rose and blush.'],
+    ['Rose cannelle', 'Le brun cannelle réchauffe les rouges poudrés, le rose ancien et le rose pâle.'],
+    ['Rosa canela', 'Marrón canela con rojo apagado, rosa antiguo y rubor.'],
+    ['Rosa-canela', 'Castanho-canela com vermelho suave, rosa antigo e rosado claro.'],
+    ['Zimtrosa', 'Zimtbraun wärmt gedämpftes Rot, Altrosa und blasses Rosé.'],
+  ]),
+  palette(25, 'fennel-and-mushroom', 'earthy', ['#4A4036', '#726357', '#8C8B66', '#B0A88B', '#D8CCB8'], [
+    ['Fennel and Mushroom', 'Mushroom brown and taupe meet muted fennel green and oat beige.'],
+    ['Fenouil et champignon', 'Brun champignon et taupe avec vert fenouil et beige avoine.'],
+    ['Hinojo y seta', 'Marrón seta y topo con verde hinojo apagado y beige avena.'],
+    ['Funcho e cogumelo', 'Castanho-cogumelo e cinza-acastanhado com verde-funcho e bege-aveia.'],
+    ['Fenchel und Pilz', 'Pilzbraun und Taupe mit mattem Fenchelgrün und Haferbeige.'],
+  ]),
+  palette(26, 'lullaby-sky', 'pastel', ['#F7F6FC', '#D6E6F4', '#B5D4EE', '#C9C8EA', '#E9D3E6'], [
+    ['Lullaby Sky', 'Cloud white, baby blue, periwinkle and pale mauve in a gentle cool set.'],
+    ['Ciel de berceuse', 'Blanc nuage, bleu layette, pervenche et mauve pâle dans une gamme froide.'],
+    ['Cielo de arrullo', 'Blanco nube, azul bebé, azul violáceo y malva pálido en una gama fresca.'],
+    ['Céu de acalanto', 'Branco-nuvem, azul-bebê, azul-lilás e malva claro numa gama fresca.'],
+    ['Wiegenliedhimmel', 'Wolkenweiß, Babyblau, Immergrünblau und blasses Malve in kühlen Tönen.'],
+  ]),
+  palette(27, 'electric-jade', 'bold', ['#1C2636', '#5343A8', '#8855D6', '#17AA75', '#5BDCA9'], [
+    ['Electric Jade', 'Vivid jade green cuts through violet, deep indigo and blue charcoal.'],
+    ['Jade électrique', 'Le vert jade vif tranche sur le violet, l’indigo profond et le charbon bleuté.'],
+    ['Jade eléctrico', 'Verde jade vivo sobre violeta, índigo profundo y carbón azulado.'],
+    ['Jade elétrico', 'Verde-jade intenso com violeta, índigo profundo e carvão azulado.'],
+    ['Elektrische Jade', 'Leuchtendes Jadegrün kontrastiert mit Violett, Indigo und blauem Anthrazit.'],
+  ]),
+  palette(28, 'espresso-and-oxblood', 'moody', ['#1E1717', '#332324', '#4D272F', '#662B36', '#845055'], [
+    ['Espresso and Oxblood', 'Espresso brown, oxblood and muted burgundy in a low-light palette.'],
+    ['Espresso et bordeaux profond', 'Brun espresso, bordeaux profond et lie-de-vin dans une palette sombre.'],
+    ['Espresso y granate oscuro', 'Marrón espresso, granate oscuro y burdeos apagado.'],
+    ['Espresso e bordô escuro', 'Castanho de espresso, bordô profundo e vinho suave numa paleta escura.'],
+    ['Espresso und Ochsenblut', 'Espressobraun, Ochsenblutrot und gedämpftes Bordeaux.'],
+  ]),
+  palette(29, 'silver-and-ink', 'minimal', ['#181F26', '#596571', '#AAB4BE', '#E8EDF1'], [
+    ['Silver and Ink', 'Blue-black ink, cool slate, silver and a soft off-white.'],
+    ['Argent et encre', 'Encre bleu-noir, ardoise froide, argent et blanc cassé.'],
+    ['Plata y tinta', 'Tinta azul negruzca, pizarra fría, plata y blanco roto.'],
+    ['Prata e tinta', 'Tinta azul quase preta, ardósia fria, prata e branco suave.'],
+    ['Silber und Tinte', 'Blauschwarze Tinte, kühler Schiefer, Silber und gebrochenes Weiß.'],
+  ]),
+  palette(30, 'sunfaded-motel', 'retro', ['#594665', '#8D6D92', '#CB836D', '#E3AC84', '#F4DDB9'], [
+    ['Sun-Faded Motel', 'Dusty purple, faded coral, peach and cream recall an old painted sign.'],
+    ['Motel délavé par le soleil', 'Violet poudré, corail délavé, pêche et crème évoquent une enseigne peinte.'],
+    ['Motel desteñido', 'Violeta apagado, coral desvaído, melocotón y crema evocan un letrero antiguo.'],
+    ['Motel desbotado', 'Violeta suave, coral desbotado, pêssego e creme lembram uma placa antiga.'],
+    ['Sonnengebleichtes Motel', 'Mattes Violett, verblasste Koralle, Pfirsich und Creme wie auf einem alten Schild.'],
+  ]),
+  palette(31, 'lemon-zest-and-leaf', 'fresh', ['#316B48', '#69A858', '#AFC75F', '#E5DB55', '#FAF1B5'], [
+    ['Lemon Zest and Leaf', 'Leaf green, chartreuse and lemon yellow in a crisp citrus range.'],
+    ['Zeste de citron et feuille', 'Vert feuille, vert chartreuse et jaune citron dans une gamme vive.'],
+    ['Ralladura de limón y hoja', 'Verde hoja, verde chartreuse y amarillo limón en una gama fresca.'],
+    ['Casca de limão e folha', 'Verde-folha, verde-amarelado e amarelo-limão numa gama cítrica.'],
+    ['Zitronenzeste und Blatt', 'Blattgrün, Gelbgrün und Zitronengelb in einer frischen Zitrusreihe.'],
+  ]),
+  palette(32, 'amber-sunset', 'warm', ['#713449', '#AB4D56', '#D67554', '#ECA75C', '#F8D891', '#FCE8C3'], [
+    ['Amber Sunset', 'Berry red and salmon rise through amber gold to a pale sunset yellow.'],
+    ['Coucher de soleil ambré', 'Rouge baie et saumon passent à l’or ambré puis au jaune pâle.'],
+    ['Atardecer ámbar', 'Rojo baya y salmón pasan por dorado ámbar hasta un amarillo pálido.'],
+    ['Pôr do sol âmbar', 'Vermelho de frutos silvestres e salmão passam por âmbar até amarelo claro.'],
+    ['Bernsteinfarbener Sonnenuntergang', 'Beerenrot und Lachs führen über Bernsteingold zu blassem Gelb.'],
+  ]),
+  palette(33, 'ochre-and-slate', 'earthy', ['#303B3F', '#526267', '#8B8674', '#AD7C3D', '#D0A35F', '#E5D3AC'], [
+    ['Ochre and Slate', 'Mustard ochre and sand balance mineral blue-gray and smoky taupe.'],
+    ['Ocre et ardoise', 'Ocre moutarde et sable équilibrent le gris bleuté minéral et le taupe fumé.'],
+    ['Ocre y pizarra', 'Ocre mostaza y arena equilibran el gris azulado mineral y el topo ahumado.'],
+    ['Ocre e ardósia', 'Ocre-mostarda e areia equilibram o cinza-azulado mineral e o tom taupe fumado.'],
+    ['Ocker und Schiefer', 'Senfocker und Sand gleichen mineralisches Blaugrau und rauchiges Taupe aus.'],
+  ]),
+  palette(34, 'rosewater-and-almond', 'pastel', ['#FFF7EA', '#EFE1CE', '#F3D6D8', '#DDBAC8', '#CBA7B8'], [
+    ['Rosewater and Almond', 'Almond cream and faded pinks with a soft note of mauve.'],
+    ['Eau de rose et amande', 'Crème d’amande et roses délavés avec une touche de mauve.'],
+    ['Agua de rosas y almendra', 'Crema de almendra y rosas suaves con un toque malva.'],
+    ['Água de rosas e amêndoa', 'Creme de amêndoa e rosas suaves com um toque de malva.'],
+    ['Rosenwasser und Mandel', 'Mandelcreme und blasse Rosatöne mit einem Hauch Malve.'],
+  ]),
+  palette(35, 'pomegranate-and-sea-green', 'bold', ['#006264', '#139689', '#E14358', '#F17A72', '#F9E1C7'], [
+    ['Pomegranate and Sea Green', 'Pomegranate red and coral contrast with saturated teal and sea green.'],
+    ['Grenade et vert marin', 'Rouge grenade et corail contrastent avec le bleu canard et le vert marin saturés.'],
+    ['Granada y verde mar', 'Rojo granada y coral contrastan con verde azulado y verde mar intensos.'],
+    ['Romã e verde-mar', 'Vermelho-romã e coral contrastam com verde-azulado e verde-mar intensos.'],
+    ['Granatapfel und Meergrün', 'Granatapfelrot und Koralle kontrastieren mit sattem Petrol und Meergrün.'],
+  ]),
+  palette(36, 'graphite-and-petrol', 'moody', ['#11181D', '#29343C', '#30454D', '#375F69', '#658791'], [
+    ['Graphite and Petrol', 'Graphite and charcoal sink into dark petrol blue and soft steel.'],
+    ['Graphite et pétrole', 'Graphite et charbon se mêlent au bleu pétrole sombre et à l’acier doux.'],
+    ['Grafito y petróleo', 'Grafito y carbón se funden con azul petróleo oscuro y acero suave.'],
+    ['Grafite e petróleo', 'Grafite e carvão misturam-se com azul-petróleo escuro e cinza-aço suave.'],
+    ['Graphit und Petrol', 'Graphit und Anthrazit gehen in dunkles Petrolblau und mattes Stahlblau über.'],
+  ]),
+  palette(37, 'oat-and-ink', 'minimal', ['#292624', '#B8A68F', '#F3E9D8'], [
+    ['Oat and Ink', 'Three dry neutrals in near-black ink, oat beige and warm ivory.'],
+    ['Avoine et encre', 'Trois neutres aux tons d’encre presque noire, de beige avoine et d’ivoire chaud.'],
+    ['Avena y tinta', 'Tres neutros en tinta casi negra, beige avena y marfil cálido.'],
+    ['Aveia e tinta', 'Três neutros em tinta quase preta, bege-aveia e marfim quente.'],
+    ['Hafer und Tinte', 'Drei Neutraltöne aus fast schwarzer Tinte, Haferbeige und warmem Elfenbein.'],
+  ]),
+  palette(38, 'violet-vinyl', 'retro', ['#3A294F', '#775589', '#A87CA2', '#D99565', '#EBC986'], [
+    ['Violet Vinyl', 'Dusty violets pair with burnt apricot and butter gold.'],
+    ['Vinyle violet', 'Violets poudrés avec abricot brûlé et or beurre.'],
+    ['Vinilo violeta', 'Violetas apagados junto a albaricoque tostado y dorado mantequilla.'],
+    ['Vinil violeta', 'Violetas suaves com damasco tostado e dourado-manteiga.'],
+    ['Violettes Vinyl', 'Gedämpftes Violett mit gerösteter Aprikose und Buttergold.'],
+  ]),
+  palette(39, 'bluebell-and-clover', 'fresh', ['#25475D', '#487DA1', '#86B9D7', '#58A67D', '#ADD399', '#EDF5D7'], [
+    ['Bluebell and Clover', 'Bluebell blue and clover green brighten into pale grass and mist.'],
+    ['Jacinthe et trèfle', 'Bleu jacinthe et vert trèfle s’éclaircissent en herbe tendre et brume.'],
+    ['Jacinto y trébol', 'Azul jacinto y verde trébol se aclaran hacia hierba tierna y niebla.'],
+    ['Jacinto e trevo', 'Azul de jacinto e verde-trevo clareiam em tons de relva nova e névoa.'],
+    ['Hasenglöckchen und Klee', 'Blütenblau und Kleegrün hellen sich zu jungem Gras und Nebel auf.'],
+  ]),
+  palette(40, 'copper-and-candlelight', 'warm', ['#422D29', '#704131', '#A45A42', '#C77851', '#D99C60', '#EDC281', '#FAE7BD'], [
+    ['Copper and Candlelight', 'Seven warm steps from dark wood and copper to golden candlelight.'],
+    ['Cuivre et bougie', 'Sept tons chauds du bois sombre et du cuivre à la lumière dorée d’une bougie.'],
+    ['Cobre y luz de vela', 'Siete tonos cálidos desde la madera oscura y el cobre hasta la luz dorada de una vela.'],
+    ['Cobre e luz de vela', 'Sete tons quentes da madeira escura e do cobre à luz dourada de uma vela.'],
+    ['Kupfer und Kerzenlicht', 'Sieben warme Stufen von dunklem Holz und Kupfer bis goldenem Kerzenlicht.'],
+  ]),
+];
+
+export const baseCatalog: readonly CatalogSeed[] = [...sampleCatalog, ...gallery, ...namedColorCatalog, ...baseGradients, ...additionalFonts];
