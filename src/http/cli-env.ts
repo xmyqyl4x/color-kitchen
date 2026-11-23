@@ -10,15 +10,12 @@ export function cleanEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
 
 export function resolveCliRuntime(rawEnv: NodeJS.ProcessEnv, warn: (message: string) => void = console.warn) {
   const env = cleanEnvironment(rawEnv);
-  const isProduction = env.NODE_ENV === 'production';
+  const connectionString = env.DATABASE_URL;
 
-  if (isProduction && env.COLOR_KITCHEN_ORIGIN) {
-    return {
-      env,
-      isProduction,
-      hasConfiguredOrigin: true,
-      runtime: runtimeFromEnvironment(env),
-    };
+  if (env.NODE_ENV === 'production') {
+    const runtime = runtimeFromEnvironment(env);
+    if (!connectionString) throw new Error('Set DATABASE_URL to the PostgreSQL connection URL for this deployment.');
+    return { env, isProduction: true as const, connectionString, runtime };
   }
 
   let origin: string | undefined;
@@ -44,8 +41,8 @@ export function resolveCliRuntime(rawEnv: NodeJS.ProcessEnv, warn: (message: str
   const indexing = env.COLOR_KITCHEN_INDEXING === 'false' ? false : true;
   return {
     env,
-    isProduction,
-    hasConfiguredOrigin: origin !== undefined,
+    isProduction: false as const,
+    connectionString,
     runtime: {
       ...listener,
       origin,
