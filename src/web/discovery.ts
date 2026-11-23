@@ -7,7 +7,10 @@ import { assertColor } from '../color/parse.js';
 import { gradientTypes, isGradientType } from '../gradient/gradient.js';
 import { catalogListOptions, type CatalogHttpDependencies } from '../http/public-catalog.js';
 import type { Locale } from '../model/locales.js';
+import { publishedDiscoveryTopics, topicLabel, topicPath, topicSeo, type DiscoveryTopic } from './discovery-topics.js';
 import { discoveryText } from './discovery-text.js';
+import { hasDiscoveryFilters } from './seo-http.js';
+import { pageSeo, seoLabels } from './seo-text.js';
 import { html, pathFor } from './shell.js';
 import { screenTitle } from './strings.js';
 
@@ -15,6 +18,7 @@ export const discoveryKinds = { palettes: 'palette', gradients: 'gradient', colo
 type Screen = keyof typeof discoveryKinds;
 const families = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'violet', 'magenta', 'neutral'] as const;
 const lightness = ['dark', 'medium', 'light'] as const;
+const filterKeys = ['q', 'type', 'family', 'lightness', 'count', 'mood', 'sort', 'limit', 'cursor'] as const;
 
 function link(value: string | null, label: string) {
   try {
@@ -24,14 +28,17 @@ function link(value: string | null, label: string) {
 }
 
 export function discoveryPage(deps: CatalogHttpDependencies) {
-  return async (request: Request, screen: Screen, locale: Locale, slug?: string) => {
+  return async (request: Request, screen: Screen, locale: Locale, slug?: string, topic?: DiscoveryTopic) => {
     const url = new URL(request.url);
     const kind = discoveryKinds[screen];
     const t = (key: Parameters<typeof discoveryText>[1]) => html(discoveryText(locale, key));
     const path = pathFor(locale, screen);
     const measurement = kind === 'palette' && deps.measurement === true;
-    const title = screenTitle(locale, screen);
+    const galleryTitle = screenTitle(locale, screen);
+    const [title, intro] = topic ? topicSeo(locale, topic) : [galleryTitle, pageSeo(locale, screen)![1]];
     const params = new URLSearchParams(url.search);
+    const filtered = hasDiscoveryFilters(params, filterKeys);
+    if (topic) params.set(topic.filter, topic.slug);
     const search = params.get('q') ?? '';
     const sectionClass = kind === 'color' ? 'color-atlas' : kind === 'gradient' ? 'gradient-gallery' : '';
     const card = (entry: CatalogEntry, detail = false) => {
@@ -48,8 +55,17 @@ export function discoveryPage(deps: CatalogHttpDependencies) {
         const aliases = Array.isArray(entry.payload.aliases) ? entry.payload.aliases.filter(value => typeof value === 'string') : [];
         const keyword = typeof entry.payload.keyword === 'string' ? [entry.payload.keyword, ...aliases] : [];
         description = '<p class="atlas-hex"><code>' + html(toHex(color).hex) + '</code></p>' + (detail
-          ? (keyword.length ? '<p>' + t('exact') + ' · ' + keyword.map(name => '<code>' + html(name) + '</code>').join(', ') + '</p>'
-            : '<p>' + html(entry.summary) + '</p>') + provenance : '');
+          ? '<p>' + html(entry.summary) + '</p>' +
+            (keyword.length ? '<p>' + t('exact') + ' · ' + keyword.map(name => '<code>' + html(name) + '</code>').join(', ') + '</p>' : '') +
+            provenance : '');
+      }
+      if (detail && entry.kind === 'palette' && Array.isArray(entry.payload.swatches)) {
+        const colors = entry.payload.swatches.map(({ color }) => {
+          assertColor(color);
+          return '<li><code data-palette-code>' + html(toHex(color).hex) + '</code></li>';
+        });
+        description = '<p>' + html(entry.summary) + '</p><div class="palette-codes"><p>' + html(seoLabels(locale).codes) + '</p><ul>' +
+          colors.join('') + '</ul></div>' + provenance;
       }
       if (isGradient && isGradientType(entry.payload.type)) {
         description = '<p class="gradient-gallery-type">' + t(entry.payload.type) + '</p><p>' + html(entry.summary) + '</p>';
@@ -74,10 +90,16 @@ export function discoveryPage(deps: CatalogHttpDependencies) {
       const result = await deps.withClient(client => publicCatalogDetail(client, kind, slug, locale));
       if (!result) return null;
       const entry = result.entry;
-      if (entry.slug !== slug) return new Response(null, { status: 302, headers: { Location: result.metadata.canonical, 'Cache-Control': 'no-store' } });
-      return { title: entry.title, description: entry.summary,
-        content: '<section class="studio" data-measurement="' + measurement + '"><h1>' + html(entry.title) + '</h1><a class="secondary-link" href="' + path + '">' + html(title) +
-          '</a><ul class="collection-grid' + (sectionClass ? ' ' + sectionClass + '-detail' : '') + '">' + card(entry, true) + '</ul></section>', index: true, status: 200 };
+      if (entry.slug !== slug) return new Response(null, { status: 308, headers: { Location: result.metadata.canonical, 'Cache-Control': 'no-store' } });
+      let term: string;
+      if (kind === 'color') {
+        const color = entry.payload.color;
+        assertColor(color);
+        term = toHex(color).hex;
+      } else term = seoLabels(locale)[kind];
+      return { title: entry.title, seoTitle: entry.title + ' · ' + term, description: entry.summary,
+        content: '<section class="studio" data-measurement="' + measurement + '"><h1>' + html(entry.title) + '</h1>' +
+          '<ul class="collection-grid' + (sectionClass ? ' ' + sectionClass + '-detail' : '') + '">' + card(entry, true) + '</ul></section>', index: true, status: 200 };
     }
     const select = (key: Parameters<typeof discoveryText>[1], options: readonly string[], first = '') =>
       '<label>' + t(key) + '<select name="' + key + '"><option value="">' + first + '</option>' + options.map(choice =>
@@ -117,12 +139,24 @@ export function discoveryPage(deps: CatalogHttpDependencies) {
     const note = nearest ? '<p class="discovery-approximation" role="status">' + t('nearest') + '</p>' :
       entries ? '' : '<p role="status">' + t('empty') + '</p>';
     const cards = nearest ? card(nearest) : entries;
+    if (topic && !filtered && !results.items.length) return null;
+    let topicNav = '';
+    if (!filtered && !topic && (kind === 'palette' || kind === 'gradient')) {
+      const available = (await deps.withClient(publishedDiscoveryTopics)).filter(item => item.screen === screen);
+      if (available.length) {
+        const heading = html(seoLabels(locale).collections);
+        topicNav = '<nav class="discovery-topics" aria-label="' + heading + '"><h2>' + heading + '</h2><ul>' +
+          available.map(item => '<li><a href="' + topicPath(locale, item) + '">' + html(topicLabel(locale, item)) + '</a></li>').join('') + '</ul></nav>';
+      }
+    }
     const more = new URLSearchParams(params);
+    if (topic) more.delete(topic.filter);
     if (results.nextCursor) more.set('cursor', results.nextCursor);
-    const next = results.nextCursor ? '<a class="button" href="' + path + '?' + html(more.toString()) +
+    const next = results.nextCursor ? '<a class="button" href="' + (topic ? topicPath(locale, topic) : path) + '?' + html(more.toString()) +
       '" data-focus-key="catalog-next">' + t('next') + '</a>' : '';
-    return { title, content: '<section data-measurement="' + measurement + '"><h1>' + html(title) + '</h1>' + form + sort + note +
+    return { title, description: !filtered ? intro : undefined, content: '<section data-measurement="' + measurement + '"><h1>' + html(title) + '</h1>' +
+        (!filtered ? '<p class="discovery-intro">' + html(intro) + '</p>' : '') + topicNav + form + sort + note +
         (cards ? '<ul class="collection-grid' + (sectionClass ? ' ' + sectionClass + '-grid' : '') + '">' + cards + '</ul>' : '') + next + '</section>',
-      index: !search && !params.get('cursor'), status: 200 };
+      index: !filtered && results.items.length > 0, status: 200 };
   };
 }

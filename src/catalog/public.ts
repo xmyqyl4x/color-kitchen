@@ -14,7 +14,7 @@ const paths: Record<Exclude<CatalogKind, 'policy'>, string> = {
 const policies = ['licensing', 'terms', 'privacy', 'cookies'] as const;
 type Policy = typeof policies[number];
 
-function detailPath(kind: CatalogKind, slug: string, locale: Locale) {
+export function publicCatalogPath(kind: CatalogKind, slug: string, locale: Locale) {
   return kind === 'policy' ? `/${locale}/${slug}` : `/${locale}/${paths[kind]}/${slug}`;
 }
 
@@ -31,8 +31,8 @@ export async function publicCatalogDetail(client: ClientBase, kind: CatalogKind,
   return {
     entry,
     metadata: {
-      title: entry.title, description: entry.summary, locale, canonical: detailPath(kind, entry.slug, locale),
-      alternates: Object.fromEntries(locales.map(language => [language, detailPath(kind, entry.slug, language)])) as Record<Locale, string>,
+      title: entry.title, description: entry.summary, locale, canonical: publicCatalogPath(kind, entry.slug, locale),
+      alternates: Object.fromEntries(locales.map(language => [language, publicCatalogPath(kind, entry.slug, language)])) as Record<Locale, string>,
     },
   };
 }
