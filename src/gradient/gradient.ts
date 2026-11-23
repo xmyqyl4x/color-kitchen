@@ -4,9 +4,12 @@ import { assertColor, inRange, wrapHue } from '../color/parse.js';
 import { colorCss } from '../color/css.js';
 
 export type HuePath = 'shorter' | 'longer' | 'increasing' | 'decreasing';
+export const gradientTypes = ['linear', 'radial', 'conic'] as const;
+export type GradientType = typeof gradientTypes[number];
+export function isGradientType(value: unknown): value is GradientType { return gradientTypes.some(type => value === type); }
 export type GradientStop = Readonly<{ id: string; position: number; color: ColorValue }>;
 export type Gradient = Readonly<{
-  type: 'linear' | 'radial' | 'conic';
+  type: GradientType;
   angle?: number;
   center?: readonly [number, number];
   interpolation: 'srgb' | 'oklch';
@@ -17,7 +20,7 @@ export type GradientBounds = Readonly<{ width: number; height: number }>;
 
 export function validateGradient(gradient: Gradient) {
   const { type, center, angle, interpolation, huePath, stops } = gradient;
-  if (!['linear', 'radial', 'conic'].includes(type) ||
+  if (!isGradientType(type) ||
       (interpolation !== 'srgb' && interpolation !== 'oklch') ||
       (huePath !== undefined && !['shorter', 'longer', 'increasing', 'decreasing'].includes(huePath)) ||
       (angle !== undefined && !Number.isFinite(angle)) ||

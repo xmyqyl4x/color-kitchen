@@ -11,6 +11,7 @@ import type { ColorValue } from '../model/color.js';
 import type { BoardLayout } from '../preview/moodboard.js';
 import { readActiveDraft, readActivePalette, storeActivePalette } from './draft.js';
 import { collectionText } from './collection-text.js';
+import { colorInput } from './color-controls.js';
 import { openExportDrawer } from './export-drawer.js';
 import { imageToolsText } from './image-tools-text.js';
 import { screenTitle } from './strings.js';
@@ -277,6 +278,7 @@ function showBoard(blob: Blob) {
 }
 
 if (isBoard) {
+  const refreshBackground = colorInput(input('board-background'));
   select('board-image').addEventListener('change', () => {
     try { savePlacement(); selectedImage = select('board-image').value; showPlacement(); }
     catch { select('board-image').value = selectedImage; status.textContent = t('bad'); }
@@ -322,6 +324,7 @@ if (isBoard) {
         input('board-spacing').value = String(saved.composition.spacing);
         input('board-padding').value = String(saved.composition.padding);
         input('board-background').value = colorCss(saved.composition.background);
+        refreshBackground();
         input('board-legend').checked = saved.composition.legend === true;
       }
       await work(async signal => { showBoard((await job(await boardTask(saved, readAsset), signal)).blob); });

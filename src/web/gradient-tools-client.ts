@@ -8,6 +8,7 @@ import { parseColor } from '../color/parse.js';
 import { prepareGradient, type Gradient, type GradientStop } from '../gradient/gradient.js';
 import { collectionText } from './collection-text.js';
 import { readActiveDraft, readGradientDraft, storeActivePalette, storeGradientDraft } from './draft.js';
+import { colorInput } from './color-controls.js';
 import { openExportDrawer } from './export-drawer.js';
 import { gradientText } from './gradient-tools-text.js';
 import { screenTitle } from './strings.js';
@@ -58,6 +59,7 @@ function drawStops(stops: readonly GradientStop[]) {
     };
     const position = addField('position', String(stop.position * 100), true);
     const color = addField('color', colorCss(stop.color), false);
+    const refreshColor = colorInput(color);
     const opacity = addField('opacity', String(stop.color.alpha * 100), true);
     const change = (fromColor: boolean) => allowed(() => {
       if (!position.validity.valid || !opacity.validity.valid) throw new RangeError('Invalid stop.');
@@ -71,6 +73,7 @@ function drawStops(stops: readonly GradientStop[]) {
       if (!reordered) {
         color.value = colorCss(next.color);
         opacity.value = String(next.color.alpha * 100);
+        refreshColor();
       }
     });
     position.addEventListener('change', () => change(false));

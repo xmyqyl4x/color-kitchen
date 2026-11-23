@@ -1,12 +1,12 @@
 import type { CreativeDocument, StoredAsset } from '../browser/document.js';
 import { boardTask } from '../browser/board.js';
 import { createBrowserMedia } from '../browser/media.js';
-import { colorCss } from '../color/css.js';
 import { parseColor } from '../color/parse.js';
 import type { PaletteTextFormat } from '../export/text.js';
 import type { Locale } from '../model/locales.js';
 import { generateColorScale } from '../tailwind/scale.js';
 import { collectionText } from './collection-text.js';
+import { colorSelect, colorToken } from './color-controls.js';
 import { node, press } from './ui.js';
 
 type AssetReader = (id: string) => Promise<StoredAsset | null>;
@@ -65,14 +65,9 @@ export function openExportDrawer(locale: Locale, creative: CreativeDocument, rea
   const copy = press(t('copy'), () => run(false));
   copy.id = 'export-copy';
   actions.append(save, copy);
-  const colors = creative.kind === 'gradient' ? [] : creative.palette.swatches;
-  const strip = node('div', undefined, 'collection-strip');
-  strip.setAttribute('aria-hidden', 'true');
-  for (const { color } of colors) {
-    const tile = node('span');
-    tile.style.backgroundColor = colorCss(color);
-    strip.append(tile);
-  }
+  const colors = creative.kind === 'gradient' ? creative.stops : creative.palette.swatches;
+  const strip = node('div', undefined, 'export-swatches');
+  strip.append(...colors.map(({ color }) => colorToken(color)));
   const share = creative.kind === 'palette' ? media.export.paletteShare(creative.palette) : null;
   const shareUrl = share?.fragment ? new URL('/' + locale + '/palette-studio' + share.fragment, location.origin).href : '';
   const transparent = colors.some(swatch => swatch.color.alpha < 1);
@@ -80,7 +75,7 @@ export function openExportDrawer(locale: Locale, creative: CreativeDocument, rea
     const value = select.value;
     const limitedGamut = ['png', 'jpeg', 'svg', 'pdf', 'ase', 'hex', 'rgb', 'hsl', 'tailwind3'].includes(value);
     const needsBacking = value === 'ase' || value === 'jpeg';
-    backing.hidden = !needsBacking;
+    backingPicker.host.hidden = !needsBacking;
     assets.hidden = creative.kind !== 'board' || value !== 'json';
     detail.textContent = value === 'share' ? t('privacy') + (shareUrl ? '' : ' ' + t('large'))
       : needsBacking ? t('alpha') + ' ' + t('gamut') : limitedGamut ? t('gamut') : '';
@@ -96,7 +91,7 @@ export function openExportDrawer(locale: Locale, creative: CreativeDocument, rea
     const opaque = backingChoice.value ? parseColor(backingChoice.value) : undefined;
     if ((value === 'ase' || value === 'jpeg') && transparent && creative.kind === 'palette' && !opaque) {
       inspected.textContent = t('backingRequired');
-      backingChoice.focus();
+      backingPicker.focus();
       return;
     }
     save.disabled = copy.disabled = select.disabled = true;
@@ -136,7 +131,7 @@ export function openExportDrawer(locale: Locale, creative: CreativeDocument, rea
         const task = await boardTask(creative, readAsset ?? (async () => null), opaque);
         if (value === 'jpeg' && task.input.background.alpha < 1 && !opaque) {
           inspected.textContent = t('backingRequired');
-          backingChoice.focus();
+          backingPicker.focus();
           return;
         }
         if (value === 'pdf') ({ blob, companion: text } = await media.export.boardPdf(task));
@@ -158,6 +153,7 @@ export function openExportDrawer(locale: Locale, creative: CreativeDocument, rea
 
   select.addEventListener('change', configure);
   dialog.append(header, strip, selectLabel, detail, backing, assets, output, actions, inspected);
+  const backingPicker = colorSelect(backingChoice, value => value ? parseColor(value) : undefined);
   dialog.addEventListener('close', () => dialog.remove(), { once: true });
   document.body.append(dialog);
   configure();

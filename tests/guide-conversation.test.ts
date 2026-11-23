@@ -49,7 +49,7 @@ test('anonymous Guide keeps local mode offline and carries explicit context acro
       if (locale === 'en') {
         await page.getByRole('button', { name: 'Preview palette changes' }).click();
         assert.equal(await page.evaluate(() => sessionStorage.getItem('ck-active-palette')), before);
-        assert.match(await page.locator('#guide-result ul').textContent() ?? '', /21 : 1/);
+        assert.match(await page.locator('#guide-result .guide-contrast-pairs').textContent() ?? '', /21 : 1/);
         await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
         await page.getByText('Suggestion applied to the active palette.').waitFor();
         const after = await page.evaluate(() => JSON.parse(sessionStorage.getItem('ck-active-palette')!));

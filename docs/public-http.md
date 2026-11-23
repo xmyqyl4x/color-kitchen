@@ -15,6 +15,8 @@ Each JSON success has `version`, `locale` and `data` fields. Use `locale=en|fr|e
 
 List parameters are optional and each can occur once. Use `q` for a word or URL-encoded HEX (up to 120 characters), `family` and `mood` for lower-case hyphenated slugs, `count` for 2–12, `lightness=dark|medium|light`, `sort=featured|popular` and `limit` for 1–50. Use the returned `nextCursor` unchanged with the same language, filters and sort. The default is Featured with 20 items. A Popular fallback reports the effective sort and reason.
 
+Gradient listings also accept `type=linear|radial|conic`. Color and gradient listings accept three- or six-digit HEX codes with or without the `#` prefix. Gradient HEX searches match the color stops.
+
 Published content revalidates every time to reflect withdrawals immediately. Locale messages can be cached for five minutes. Send the returned `ETag` as `If-None-Match` to get a bodyless 304 for an unchanged representation. Errors use `{"version":1,"error":{"code":"not_found"}}` and `Cache-Control: no-store`. Expect 400 for invalid queries, 404 for absent or unpublished records, 405 for unsupported methods and 503 for catalog unavailability.
 
 | Example | Result |

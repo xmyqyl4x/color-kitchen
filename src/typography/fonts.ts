@@ -12,6 +12,10 @@ const scripts = {
 
 type Script = keyof typeof scripts;
 type Axis = Readonly<{ min: number; max: number; default: number }>;
+export const fontCategories = ['sans', 'serif', 'mono', 'display'] as const;
+export type FontCategory = typeof fontCategories[number];
+export type FontWeightRange = Readonly<Pick<Axis, 'min' | 'max'>>;
+export function isFontCategory(value: unknown): value is FontCategory { return fontCategories.some(category => category === value); }
 export type FontDefinition = Readonly<{
   family: string;
   weights: readonly number[];
@@ -41,7 +45,16 @@ export function catalogFont(payload: Record<string, unknown>): FontDefinition {
       !Array.isArray(payload.scripts) || payload.scripts.some(script => typeof script !== 'string' || !Object.hasOwn(scripts, script))) {
     throw new RangeError('Incomplete font catalog metadata.');
   }
-  const definition = { family: payload.family, weights: [payload.weight], scripts: payload.scripts as Script[] };
+  const range = payload.weightRange as FontWeightRange | undefined;
+  const weight = payload.weight;
+  let definition: FontDefinition = { family: payload.family, weights: [weight], scripts: payload.scripts as Script[] };
+  if (range !== undefined) {
+    if (!range || typeof range !== 'object' || !inRange(range.min, 1, 1000) || !inRange(range.max, range.min, 1000) ||
+        !inRange(weight, range.min, range.max)) throw new RangeError('Invalid font weight range.');
+    const standard = [100, 200, 300, 400, 500, 600, 700, 800, 900].filter(value => inRange(value, range.min, range.max));
+    const weights = [...new Set([range.min, ...standard, weight, range.max])].sort((a, b) => a - b);
+    definition = { ...definition, weights, axes: { wght: { min: range.min, max: range.max, default: weight } } };
+  }
   validateFont(definition);
   return definition;
 }

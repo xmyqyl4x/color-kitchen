@@ -3,8 +3,10 @@ import { colorCss } from '../color/css.js';
 import { convertColor } from '../color/convert.js';
 import { parseColor } from '../color/parse.js';
 import type { ColorValue } from '../model/color.js';
+import { colorCode, colorInput, colorSelect, colorToken } from './color-controls.js';
 import { readActivePalette } from './draft.js';
 import { colorToolsText } from './color-tools-text.js';
+import { studioRoles, studioText } from './studio-text.js';
 import { clientLocale, get, node } from './ui.js';
 
 const locale = clientLocale();
@@ -46,24 +48,39 @@ function mountContrast() {
   const fgChoice = select('contrast-fg-swatch');
   const bgChoice = select('contrast-bg-swatch');
   const draft = readActivePalette();
+  const palette = draft?.palette ?? { roles: {} as Record<string, string>,
+    swatches: ['#213C35', '#6F8F7B', '#E4B363', '#E9DED0', '#F8F5EF'].map((hex, index) => ({ id: 'starter-' + index, color: parseColor(hex) })) };
+  const swatches = new Map(palette.swatches.map(item => [item.id, item.color]));
   let pending: ReturnType<typeof colorTools.suggestForeground> = null;
-  const undo: string[] = [];
-  if (draft) {
-    for (const [selection, field, roles] of [[fgChoice, foreground, ['text', 'on-primary']], [bgChoice, background, ['background', 'surface']]] as const) {
-      for (const [index, swatch] of draft.palette.swatches.entries()) {
-        const assigned = Object.keys(draft.palette.roles).filter(role => draft.palette.roles[role] === swatch.id);
-        selection.add(new Option(colorTools.inspect(swatch.color).hex.hex + (assigned.length ? ' · ' + assigned.join(', ') : ' · ' + (index + 1)),
-          colorCss(swatch.color)));
-        if (assigned.some(role => roles.some(value => value === role))) selection.value = colorCss(swatch.color);
-      }
-      if (selection.value) field.value = selection.value;
-      selection.addEventListener('change', () => { if (selection.value) field.value = selection.value; run(render); });
-      field.addEventListener('input', () => { selection.value = ''; });
+  const undo: { value: string; swatch: string }[] = [];
+  const inputs = [foreground, background, base].map(field => colorInput(field));
+  const pickers = [[fgChoice, foreground, ['text', 'on-primary']], [bgChoice, background, ['background', 'surface']]] as const;
+  const refreshPickers = pickers.map(([selection, field, roles]) => {
+    for (const [id, color] of swatches) {
+      const assigned = studioRoles.filter(role => palette.roles[role] === id).map(role => studioText(locale, role));
+      selection.add(new Option(colorCode(color) + (assigned.length ? ' · ' + assigned.join(', ') : ''), id));
     }
-  }
+    const assigned = roles.find(role => palette.roles[role] && swatches.has(palette.roles[role]!));
+    if (assigned) {
+      selection.value = palette.roles[assigned]!;
+      field.value = colorCode(swatches.get(selection.value)!);
+    } else {
+      selection.value = [...swatches].find(([, color]) => colorCode(color) === field.value)?.[0] ?? '';
+    }
+    const picker = colorSelect(selection, value => swatches.get(value));
+    selection.addEventListener('change', () => {
+      const color = swatches.get(selection.value);
+      if (color) field.value = colorCode(color);
+      else field.focus();
+      run(render);
+    });
+    field.addEventListener('input', () => { selection.value = ''; picker.refresh(); });
+    return picker.refresh;
+  });
 
   const pair = () => [value(foreground), value(background), base.value.trim() ? value(base) : undefined] as const;
   function render() {
+    for (const refresh of [...inputs, ...refreshPickers]) refresh();
     pending = null;
     action('contrast-apply').disabled = true;
     const result = colorTools.checkContrast(...pair());
@@ -89,11 +106,12 @@ function mountContrast() {
   for (const field of [foreground, background, base]) field.addEventListener('input', () => {
     pending = null;
     action('contrast-apply').disabled = true;
-    output.querySelector('#suggested-color')?.remove();
+    output.replaceChildren();
+    status.textContent = '';
   });
   action('contrast-swap').addEventListener('click', () => {
     [foreground.value, background.value] = [background.value, foreground.value];
-    fgChoice.value = bgChoice.value = '';
+    [fgChoice.value, bgChoice.value] = [bgChoice.value, fgChoice.value];
     run(render);
   });
   action('contrast-fix').addEventListener('click', () => run(() => {
@@ -108,7 +126,7 @@ function mountContrast() {
   }));
   action('contrast-apply').addEventListener('click', () => run(() => {
     if (!pending) return;
-    undo.push(foreground.value);
+    undo.push({ value: foreground.value, swatch: fgChoice.value });
     foreground.value = colorCss(pending.color);
     fgChoice.value = '';
     action('contrast-undo').disabled = false;
@@ -116,7 +134,10 @@ function mountContrast() {
   }));
   action('contrast-undo').addEventListener('click', () => run(() => {
     const earlier = undo.pop();
-    if (earlier !== undefined) foreground.value = earlier;
+    if (earlier) {
+      foreground.value = earlier.value;
+      fgChoice.value = earlier.swatch;
+    }
     action('contrast-undo').disabled = !undo.length;
     render();
   }));
@@ -125,6 +146,7 @@ function mountContrast() {
 
 function mountInspector() {
   const field = input('inspector-value');
+  const refreshColor = colorInput(field);
   const mode = select('inspector-space');
   const channels = [0, 1, 2, 3].map(index => input('channel-' + index));
   type EyeDropperType = new () => { open(): Promise<{ sRGBHex: string }> };
@@ -157,6 +179,7 @@ function mountInspector() {
     [...currentChannels, current.alpha].forEach((amount, index) => { channels[index]!.value = String(amount); });
   }
   function render() {
+    refreshColor();
     const inspected = colorTools.inspect(current);
     const { hue, saturation, lightness } = inspected.hsl;
     const target = coordinates(current);
@@ -168,9 +191,12 @@ function mountInspector() {
     for (const [label, value] of [['HEX', inspected.hex.hex], ['RGB', rgb],
       ['HSL', [hue, saturation * 100, lightness * 100].map(number.format).join(' / ')],
       ['OKLCH', inspected.oklch.components.map(number.format).join(' / ')], [t('alpha'), number.format(current.alpha)],
-      [t(exact ? 'exact' : 'nearest'), nearest[0]], [t('color'), inspected.css]] as const) {
+      [t('color'), inspected.css]] as const) {
       descriptions.append(node('dt', label), node('dd', value));
     }
+    const named = node('dd');
+    named.append(colorToken(parseColor(nearest[1])), ' ' + nearest[0]);
+    descriptions.append(node('dt', t(exact ? 'exact' : 'nearest')), named);
     const alternate = node('div', undefined, 'color-results');
     alternate.append(colorTile(colorTools.tint(current, 0.4), t('tint')), colorTile(colorTools.shade(current, 0.4), t('shade')),
       colorTile(colorTools.tone(current, 0.4), t('tone')));

@@ -3,6 +3,13 @@ import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import type { Page } from 'playwright';
 
+export async function chooseColor(page: Page, id: string, value: string, touch = false) {
+  const trigger = page.locator('#' + id + '-trigger');
+  const option = page.locator('#' + id + '-trigger + ul button[data-color-option="' + value + '"]');
+  if (touch) { await trigger.tap(); await option.tap(); }
+  else { await trigger.click(); await option.click(); }
+}
+
 const compiled = new URL('../', import.meta.url);
 
 export async function withBrowserPage<T>(work: (page: Page) => Promise<T>): Promise<T> {

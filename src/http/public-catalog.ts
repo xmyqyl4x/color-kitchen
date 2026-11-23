@@ -2,6 +2,7 @@ import type { ClientBase } from 'pg';
 import { publicCatalogDetail, publicCatalogListing } from '../catalog/public.js';
 import { catalogKinds, slugPattern, type CatalogKind } from '../catalog/repository.js';
 import type { CatalogFilters } from '../catalog/search.js';
+import { isGradientType } from '../gradient/gradient.js';
 import { messages } from '../i18n/messages.js';
 import { resolveLocale } from '../i18n/resolve.js';
 import { isLocale, locales } from '../model/locales.js';
@@ -22,13 +23,14 @@ export function catalogListOptions(query: { get(key: string): string | null | un
   const limit = query.get('limit') ?? undefined;
   const sort = query.get('sort') ?? undefined;
   const lightness = query.get('lightness') ?? undefined;
+  const gradientType = query.get('type') ?? undefined;
   if ((count !== undefined && !/^[1-9]\d?$/.test(count)) || (limit !== undefined && !/^[1-9]\d?$/.test(limit)) ||
-      (sort !== undefined && sort !== 'featured' && sort !== 'popular') ||
+      (sort !== undefined && sort !== 'featured' && sort !== 'popular') || (gradientType !== undefined && !isGradientType(gradientType)) ||
       (lightness !== undefined && lightness !== 'light' && lightness !== 'medium' && lightness !== 'dark')) {
     throw new RangeError('Invalid listing filters.');
   }
   const filters: CatalogFilters = { query: query.get('q') ?? undefined, family: query.get('family') ?? undefined,
-    mood: query.get('mood') ?? undefined, colorCount: count === undefined ? undefined : Number(count), lightness };
+    mood: query.get('mood') ?? undefined, colorCount: count === undefined ? undefined : Number(count), lightness, gradientType };
   return { filters, cursor: query.get('cursor') ?? undefined, limit: limit === undefined ? undefined : Number(limit), sort };
 }
 
@@ -41,6 +43,7 @@ export function catalogHttp(dependencies: CatalogHttpDependencies) {
     const [, resource, scope, slug] = match;
     const listing = resource === 'catalog' && !slug;
     const allowed = listing ? ['locale', 'q', 'family', 'mood', 'count', 'lightness', 'sort', 'cursor', 'limit'] : ['locale'];
+    if (listing && scope === 'gradient') allowed.push('type');
     const query = new Map<string, string>();
     for (const [key, value] of url.searchParams) {
       if (!allowed.includes(key) || query.has(key)) return apiError(400, 'invalid_query');

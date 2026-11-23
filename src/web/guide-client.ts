@@ -1,13 +1,12 @@
 import { WorkspaceStorageError } from '../browser/database.js';
 import type { PaletteDocument } from '../browser/document.js';
 import { colorTools, createPaletteEditing } from '../browser/editing.js';
-import { colorCss } from '../color/css.js';
-import { toHex } from '../color/convert.js';
 import { assertColor, parseColor } from '../color/parse.js';
 import { localColorGuide } from '../guide/local.js';
 import { guidePaletteEdit, guideRoles, type GuideSuggestion } from '../guide/response.js';
 import { collectionText } from './collection-text.js';
 import { colorToolsText } from './color-tools-text.js';
+import { colorCode, colorInput, colorSelect, colorToken } from './color-controls.js';
 import { readActiveDraft, storeActivePalette } from './draft.js';
 import { guideText } from './guide-text.js';
 import { screenTitle } from './strings.js';
@@ -29,6 +28,7 @@ const submit = get<HTMLButtonElement>('guide-submit');
 const cancel = get<HTMLButtonElement>('guide-cancel');
 const figure = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 });
 const input = (id: string) => get<HTMLInputElement>(id).value;
+for (const id of ['guide-fg', 'guide-bg', 'guide-backing']) colorInput(get<HTMLInputElement>(id));
 const draft = readActiveDraft();
 const initial: PaletteDocument = draft?.document ?? { kind: 'palette', schemaVersion: 1, revision: 1, id: crypto.randomUUID(),
   name: screenTitle(locale, 'color-guide'), updatedAt: Date.now(), palette: colorTools.newPalette({ seed: 17 }) };
@@ -50,11 +50,11 @@ function saveDraft() {
 }
 function updateSwatches() {
   get('guide-swatches').replaceChildren(...editing.snapshot().document.palette.swatches.map(({ id, color }) => {
-    const label = node('label', ' ' + toHex(color).hex);
+    const label = node('label', undefined, 'color-pair');
     const checkbox = node('input');
     checkbox.type = 'checkbox'; checkbox.checked = selectedForShare.has(id);
     checkbox.addEventListener('change', () => checkbox.checked ? selectedForShare.add(id) : selectedForShare.delete(id));
-    label.prepend(checkbox);
+    label.append(checkbox, colorToken(color));
     return label;
   }));
   get('guide-swatches').hidden = !share.checked;
@@ -111,31 +111,35 @@ function show(suggestion: GuideSuggestion, selectedMode: 'local' | 'hosted') {
   const assignments = node('div', undefined, 'guide-assignments');
   const view = editing.snapshot();
   const unlocked = view.document.palette.swatches.filter(swatch => !swatch.locked);
+  const available = new Map(unlocked.map(({ id, color }) => [id, color]));
   const targets: HTMLSelectElement[] = [];
   suggestion.colors.forEach((color, index) => {
-    const label = node('label', t('target') + ' · ' + toHex(color).hex);
-    const tile = node('span'); tile.style.backgroundColor = colorCss(color);
+    const label = node('label', t('target') + ' ');
     const role = guideRoles.filter(role => suggestion.roles[role] === index).map(role => studioText(locale, role)).join(', ');
-    const chip = node('span', toHex(color).hex + (role ? ' · ' + role : ''), 'guide-chip'); chip.prepend(tile);
+    const chip = node('span', undefined, 'color-pair guide-chip');
+    chip.append(colorToken(color), role ? ' · ' + role : '');
     strip.append(chip);
     const target = node('select');
     target.add(new Option(studioText(locale, 'none'), ''));
-    unlocked.forEach(item => target.add(new Option(toHex(item.color).hex, item.id)));
+    for (const [id, availableColor] of available) target.add(new Option(colorCode(availableColor), id));
     if (unlocked[index]) target.value = unlocked[index].id;
     targets.push(target);
-    label.append(target);
+    label.append(colorToken(color), target);
     assignments.append(label);
+    colorSelect(target, id => available.get(id));
   });
-  const checks = node('ul');
+  const checks = node('ul', undefined, 'guide-contrast-pairs');
   for (const assessment of suggestion.assessments) {
-    checks.append(node('li', toHex(assessment.foreground).hex + ' / ' + toHex(assessment.background).hex +
-      ' · ' + figure.format(assessment.ratio) + ' : 1 · AA ' + colorToolsText(locale, assessment.normal.aa.passes ? 'pass' : 'fail')));
+    const pair = node('li', undefined, 'color-pair');
+    pair.append(colorToken(assessment.foreground), ' / ', colorToken(assessment.background),
+      ' · ' + figure.format(assessment.ratio) + ' : 1 · AA ' + colorToolsText(locale, assessment.normal.aa.passes ? 'pass' : 'fail'));
+    checks.append(pair);
   }
   result.replaceChildren(name, node('p', suggestion.message), strip);
   if (checks.children.length) result.append(checks);
   if (!suggestion.colors.length) return;
   let proposed: ReturnType<typeof editing.propose> | undefined;
-  const previewStrip = node('div', undefined, 'collection-strip');
+  const previewStrip = node('div', undefined, 'guide-swatches');
   const apply = press(studioText(locale, 'apply'), () => {
     if (!proposed) return;
     try { editing.apply(proposed); if (saveDraft()) status.textContent = t('applied'); result.replaceChildren(); }
@@ -145,9 +149,7 @@ function show(suggestion: GuideSuggestion, selectedMode: 'local' | 'hosted') {
   const preview = press(t('preview'), () => {
     try {
       proposed = editing.propose(guidePaletteEdit(suggestion, targets.map(item => item.value)), view.version);
-      previewStrip.replaceChildren(...proposed.preview.swatches.map(({ color }) => {
-        const tile = node('span'); tile.style.backgroundColor = colorCss(color); tile.title = toHex(color).hex; return tile;
-      }));
+      previewStrip.replaceChildren(...proposed.preview.swatches.map(({ color }) => colorToken(color)));
       apply.disabled = false;
       status.textContent = '';
     } catch { status.textContent = t('choose'); }

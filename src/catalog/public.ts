@@ -1,9 +1,12 @@
 import type { ClientBase } from 'pg';
+import { convertColor } from '../color/convert.js';
+import { assertColor, parseColor } from '../color/parse.js';
 import { inTransaction } from '../db/transaction.js';
+import type { ColorValue } from '../model/color.js';
 import { isLocale, locales, type Locale } from '../model/locales.js';
 import { catalogProjection, catalogKinds, getCatalogRelease, type CatalogEntry, type CatalogKind } from './repository.js';
 import { chooseCatalogSort, popularityWindow, unfeaturedRank, type CatalogSort } from './ranking.js';
-import { matchesCatalog, normalizeCatalogFilters, type CatalogFilters, type CatalogTags } from './search.js';
+import { compactColorName, matchesCatalog, normalizeCatalogFilters, type CatalogFilters, type CatalogTags } from './search.js';
 
 const paths: Record<Exclude<CatalogKind, 'policy'>, string> = {
   palette: 'palettes', gradient: 'gradients', color: 'colors', font: 'fonts', template: 'design-preview',
@@ -17,16 +20,43 @@ function detailPath(kind: CatalogKind, slug: string, locale: Locale) {
 
 export async function publicCatalogDetail(client: ClientBase, kind: CatalogKind, slug: string, locale: Locale) {
   if (!isLocale(locale)) throw new RangeError('A supported locale is required.');
-  const release = await getCatalogRelease(client, kind, slug);
+  let release = await getCatalogRelease(client, kind, slug);
+  if (!release && kind === 'color') {
+    const { rows: [alias] } = await client.query<{ slug: string }>(`SELECT slug FROM ck.published_catalog
+      WHERE kind='color' AND locale=$1 AND payload->'aliases' ? $2 ORDER BY slug LIMIT 1`, [locale, slug]);
+    if (alias) release = await getCatalogRelease(client, kind, alias.slug);
+  }
   if (!release) return null;
   const entry = release.translations[locale];
   return {
     entry,
     metadata: {
-      title: entry.title, description: entry.summary, locale, canonical: detailPath(kind, slug, locale),
-      alternates: Object.fromEntries(locales.map(language => [language, detailPath(kind, slug, language)])) as Record<Locale, string>,
+      title: entry.title, description: entry.summary, locale, canonical: detailPath(kind, entry.slug, locale),
+      alternates: Object.fromEntries(locales.map(language => [language, detailPath(kind, entry.slug, language)])) as Record<Locale, string>,
     },
   };
+}
+
+function labCoordinates(color: ColorValue) {
+  const [l, c, h] = convertColor(color, 'oklch').color.components;
+  const radians = h * Math.PI / 180;
+  return [l, c * Math.cos(radians), c * Math.sin(radians)];
+}
+
+export async function nearestPublishedColor(client: ClientBase, locale: Locale, hex: string) {
+  const target = labCoordinates(parseColor(hex));
+  const { rows } = await client.query<CatalogEntry>(`SELECT ${catalogProjection} FROM ck.published_catalog
+    WHERE kind='color' AND locale=$1 ORDER BY featured_rank NULLS LAST,item_id`, [locale]);
+  let nearest: CatalogEntry | undefined;
+  let best = Infinity;
+  for (const item of rows) {
+    const color = item.payload.color;
+    assertColor(color);
+    if (color.alpha !== 1) continue;
+    const distance = labCoordinates(color).reduce((sum, channel, index) => sum + (channel - target[index]!) ** 2, 0);
+    if (distance < best) { nearest = item; best = distance; }
+  }
+  return nearest;
 }
 
 export async function publicPolicy(client: ClientBase, slug: Policy, locale: Locale) {
@@ -66,7 +96,9 @@ export async function publicCatalogListing(client: ClientBase, request: Readonly
   if (!isLocale(locale) || !catalogKinds.includes(kind) || !Number.isInteger(limit) || limit < 1 || limit > 50) {
     throw new RangeError('Invalid public listing bounds.');
   }
-  const filters = normalizeCatalogFilters(request.filters ?? {}, locale);
+  const filters = normalizeCatalogFilters(request.filters ?? {}, locale, kind === 'color' || kind === 'gradient');
+  const keyword = kind === 'color' && !filters.hex ? compactColorName(filters.query) : '';
+  const exact = /^[a-z]+$/.test(keyword) ? keyword : null;
   const window = popularityWindow(request.now);
   return inTransaction(client, async () => {
     await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
@@ -89,7 +121,8 @@ export async function publicCatalogListing(client: ClientBase, request: Readonly
         WITH measured AS (${popular ? aggregate : 'SELECT NULL::uuid AS item_id, NULL::numeric AS events WHERE false AND $1::date < $2::date'}),
         ranked AS (
           SELECT c.*, CASE WHEN $3::boolean THEN COALESCE(m.events, 0)
-            ELSE -COALESCE(c.featured_rank, $8::integer)::numeric END AS score
+            ELSE (CASE WHEN c.slug=$10 OR c.payload->>'keyword'=$10 OR c.payload->'aliases' ? $10 THEN 2147483648::numeric ELSE 0 END)
+              -COALESCE(c.featured_rank, $8::integer)::numeric END AS score
           FROM ck.published_catalog AS c LEFT JOIN measured AS m USING (item_id)
           WHERE c.kind = $4 AND c.locale = $5
         )
@@ -100,7 +133,7 @@ export async function publicCatalogListing(client: ClientBase, request: Readonly
         FROM ranked
         WHERE $6::numeric IS NULL OR ranked.score < $6::numeric OR (ranked.score = $6::numeric AND ranked.item_id > $7::uuid)
         ORDER BY ranked.score DESC, ranked.item_id ASC LIMIT $9
-      `, [window.from, window.before, popular, kind, locale, anchor?.score ?? null, anchor?.itemId ?? null, unfeaturedRank, batch]);
+      `, [window.from, window.before, popular, kind, locale, anchor?.score ?? null, anchor?.itemId ?? null, unfeaturedRank, batch, exact]);
       for (const row of rows) {
         if (matchesCatalog(row, filters, row.tags)) matches.push(row);
         if (matches.length > limit) break;

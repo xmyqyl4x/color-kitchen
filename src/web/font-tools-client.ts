@@ -4,6 +4,7 @@ import { parseColor } from '../color/parse.js';
 import type { FontDefinition } from '../typography/fonts.js';
 import type { TextStyle } from '../typography/styled-text.js';
 import { collectionText } from './collection-text.js';
+import { colorInput } from './color-controls.js';
 import { readActivePalette } from './draft.js';
 import { fontToolsText } from './font-tools-text.js';
 import { clientLocale, get, node, press } from './ui.js';
@@ -15,11 +16,16 @@ const c = (key: Parameters<typeof collectionText>[1]) => collectionText(locale, 
 const media = createBrowserMedia();
 const loads = new Map<string, Promise<FontFace>>();
 const localFamily = (asset: Asset) => 'Kitchen Preview ' + asset.slug;
+const defaultWeight = (font: FontDefinition) => font.axes?.wght?.default ?? font.weights[0]!;
+function weightDescriptor(font: FontDefinition) {
+  const axis = font.axes?.wght;
+  return axis ? `${axis.min} ${axis.max}` : String(defaultWeight(font));
+}
 function load(asset: Asset) {
-  if (!/^\/assets\/fonts\/[A-Za-z0-9.-]+\.woff2$/.test(asset.font)) return Promise.reject(new Error('Invalid font URL.'));
+  if (!/^\/assets\/fonts\/[A-Za-z0-9.-]+\.(?:ttf|woff2)$/.test(asset.font)) return Promise.reject(new Error('Invalid font URL.'));
   let face = loads.get(asset.slug);
   if (!face) {
-    face = new FontFace(localFamily(asset), 'url("' + asset.font + '")', { weight: String(asset.metadata.weights[0]) }).load()
+    face = new FontFace(localFamily(asset), 'url("' + asset.font + '")', { weight: weightDescriptor(asset.metadata) }).load()
       .then(face => { document.fonts.add(face); return face; }, cause => { loads.delete(asset.slug); throw cause; });
     loads.set(asset.slug, face);
   }
@@ -32,22 +38,40 @@ function coverage(asset: FontDefinition, sample: string, weight: number) {
 
 function library() {
   const sample = get<HTMLInputElement>('font-library-sample');
+  const pending = new Map<Element, () => void>();
+  const observer = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      observer?.unobserve(entry.target);
+      pending.get(entry.target)?.();
+      pending.delete(entry.target);
+    }
+  }, { rootMargin: '160px' }) : undefined;
   for (const card of document.querySelectorAll<HTMLElement>('[data-font-face]')) {
     const asset = JSON.parse(card.dataset.fontFace!) as Asset | null;
     const preview = card.querySelector<HTMLElement>('[data-font-sample]')!;
     const status = card.querySelector<HTMLElement>('[data-font-status]')!;
-    let loaded = false;
+    let state: 'idle' | 'loading' | 'loaded' | 'failed' = asset ? 'idle' : 'failed';
     function update() {
       preview.textContent = sample.value;
-      status.textContent = !loaded || !asset ? t('fallback') :
-        t('loaded') + ' ' + coverage(asset.metadata, sample.value, asset.metadata.weights[0]!);
+      status.textContent = asset && state === 'loaded' ? t('loaded') + ' ' + coverage(asset.metadata, sample.value, defaultWeight(asset.metadata)) :
+        state === 'failed' ? t('fallback') : state === 'loading' ? t('loading') : '';
     }
-    if (asset) void load(asset).then(() => {
-      preview.style.fontFamily = JSON.stringify(localFamily(asset)) + ', system-ui, sans-serif';
-      loaded = true;
-      update();
-    }).catch(update);
-    else update();
+    if (asset) {
+      const start = () => {
+        state = 'loading';
+        update();
+        void load(asset).then(() => {
+          preview.style.fontFamily = JSON.stringify(localFamily(asset)) + ', system-ui, sans-serif';
+          preview.style.fontWeight = String(defaultWeight(asset.metadata));
+          state = 'loaded';
+          update();
+        }).catch(() => { state = 'failed'; update(); });
+      };
+      if (observer) { pending.set(card, start); observer.observe(card); }
+      else start();
+    }
+    update();
     sample.addEventListener('input', update);
   }
 }
@@ -62,8 +86,11 @@ function playground(root: HTMLElement) {
   const status = get('type-status');
   const fallback = get<HTMLInputElement>('type-fallback');
   const copyField = get<HTMLTextAreaElement>('type-copy');
+  const color = get<HTMLInputElement>('type-color');
+  const refreshColor = colorInput(color);
   const system: FontDefinition = { family: 'system-ui', weights: [400, 700], scripts: ['Latn'] };
   let faceLoaded = false;
+  let loading = false;
   let generation = 0;
   for (const item of assets) family.add(new Option(item.metadata.family, item.slug));
   const requested = /^#font=([a-z0-9-]{1,100})$/.exec(location.hash)?.[1];
@@ -72,10 +99,13 @@ function playground(root: HTMLElement) {
   const number = (id: string) => get<HTMLInputElement>(id).valueAsNumber;
   const settings = () => ({
     size: number('type-size'), weight: Number(weight.value), lineHeight: number('type-height'),
-    spacing: number('type-spacing'), color: parseColor(get<HTMLInputElement>('type-color').value),
+    spacing: number('type-spacing'), color: parseColor(color.value),
   });
   const palette = readActivePalette();
-  if (palette) get<HTMLInputElement>('type-color').value = colorCss(palette.palette.swatches[0]!.color);
+  if (palette) {
+    color.value = colorCss(palette.palette.swatches[0]!.color);
+    refreshColor();
+  }
 
   async function copy(value: string) {
     const result = await media.files.copyText(value);
@@ -95,7 +125,7 @@ function playground(root: HTMLElement) {
       preview.style.lineHeight = String(spec.lineHeight);
       preview.style.letterSpacing = spec.spacing + 'em';
       preview.style.color = colorCss(spec.color);
-      glyphs.textContent = (asset ? t(faceLoaded ? 'loaded' : 'fallback') : t('system')) + ' ' +
+      glyphs.textContent = (asset ? t(faceLoaded ? 'loaded' : loading ? 'loading' : 'fallback') : t('system')) + ' ' +
         coverage(asset?.metadata ?? system, source.value, spec.weight);
     } catch { status.textContent = t('unavailable'); }
   }
@@ -105,14 +135,18 @@ function playground(root: HTMLElement) {
     const remembered = Number(weight.value);
     weight.replaceChildren(...(asset?.metadata.weights ?? system.weights).map(value => new Option(String(value), String(value))));
     if ([...weight.options].some(option => Number(option.value) === remembered)) weight.value = String(remembered);
+    else weight.value = String(defaultWeight(asset?.metadata ?? system));
     faceLoaded = false;
+    loading = Boolean(asset);
     if (asset) {
+      renderType();
       try {
         await load(asset);
         if (selection !== generation) return;
         faceLoaded = true;
       } catch { if (selection !== generation) return; }
     }
+    loading = false;
     renderType();
   }
   function renderStyles() {
@@ -134,8 +168,13 @@ function playground(root: HTMLElement) {
   get('type-plain').addEventListener('click', () => { void copy(source.value); });
   get('type-css').addEventListener('click', () => {
     try {
-      const css = media.type.css(active()?.metadata ?? system, settings());
-      media.files.download(new Blob(['.color-kitchen-type {\n' + css + '\n}\n'], { type: 'text/css' }), 'color-kitchen-type.css');
+      const asset = active();
+      const css = media.type.css(asset?.metadata ?? system, settings());
+      const filename = asset?.font.split('/').at(-1);
+      const face = asset && filename ? `@font-face {\n  font-family: ${JSON.stringify(asset.metadata.family)};\n` +
+        `  src: url(${JSON.stringify('./' + filename)}) format("${filename.endsWith('.ttf') ? 'truetype' : 'woff2'}");\n` +
+        `  font-weight: ${weightDescriptor(asset.metadata)};\n  font-display: swap;\n}\n\n` : '';
+      media.files.download(new Blob([face + '.color-kitchen-type {\n' + css + '\n}\n'], { type: 'text/css' }), 'color-kitchen-type.css');
     } catch { status.textContent = t('unavailable'); }
   });
   get('type-image').addEventListener('click', async () => {

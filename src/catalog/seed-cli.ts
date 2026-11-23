@@ -1,6 +1,6 @@
 import pg from 'pg';
 import { seedCatalog } from './seed.js';
-import { sampleCatalog } from './sample-data.js';
+import { baseCatalog } from './base-data.js';
 
 async function run() {
   const connectionString = process.env.DATABASE_URL;
@@ -8,7 +8,7 @@ async function run() {
   const client = new pg.Client({ connectionString, connectionTimeoutMillis: 10_000 });
   try {
     await client.connect();
-    console.log(JSON.stringify(await seedCatalog(client, sampleCatalog)));
+    console.log(JSON.stringify(await seedCatalog(client, baseCatalog)));
   } finally {
     await client.end();
   }

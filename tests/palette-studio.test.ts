@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import type { Page } from 'playwright';
 import { webHttp } from '../src/web/http.js';
-import { withBrowserPage } from './browser.js';
+import { chooseColor, withBrowserPage } from './browser.js';
 import { withHttp } from './http.js';
 
 const website = webHttp({ async withClient() { throw new Error('Palette Studio does not need PostgreSQL.'); } });
@@ -36,7 +36,7 @@ test('desktop generation is repeat-safe, preserves locks and roles, and only use
       assert.equal(await firstLock.getAttribute('aria-pressed'), 'true');
       assert.equal(await page.locator('[data-control="swatch-1:value"]').getAttribute('readonly'), '');
       await page.locator('#palette-role').selectOption('primary');
-      await page.locator('#palette-role-color').selectOption('swatch-1');
+      await chooseColor(page, 'palette-role-color', 'swatch-1');
       const locked = await draft(page);
       await page.locator('#palette-name').fill('Forest study');
       await page.locator('#palette-name').press('End');
@@ -111,7 +111,7 @@ test('mobile touch users move a locked swatch, save, switch languages and keep t
         assert.equal(afterMove.palette.swatches[1]?.locked, true);
         assert.equal(await touch.locator('[data-swatch-id]').nth(1).getAttribute('data-swatch-id'), 'swatch-1');
         assert(await touch.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-        await touch.locator('#palette-role-color').selectOption('swatch-1');
+        await chooseColor(touch, 'palette-role-color', 'swatch-1', true);
         await touch.locator('#studio-save').tap();
         await touch.waitForFunction(() => document.getElementById('studio-status')?.textContent === 'Guardada en este dispositivo.');
         await touch.locator('.languages summary').tap();

@@ -48,7 +48,7 @@ test('published discovery supports localized filters, canonical aliases and guar
       assert.equal(stops, 3);
       assert.equal(new URL((await fetch(origin + '/en/colors/cyan')).url).pathname, '/en/colors/aqua');
       await page.goto(origin + '/en/colors?q=%2305FFFF');
-      await page.getByText('Nearest of the first 50 published colors').waitFor();
+      await page.getByText('Closest named color').waitFor();
       await page.locator('[data-catalog-action=edit]:enabled').press('Enter');
       await page.waitForURL('**/color-inspector#color=*');
       await page.getByText('#00FFFF', { exact: true }).first().waitFor();

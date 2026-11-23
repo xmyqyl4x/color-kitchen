@@ -19,7 +19,9 @@ The [release rehearsal](release-rehearsal.md) exercises an upgrade, a separate r
 
 ## Catalog fixtures
 
-After migrations, run `npm run db:seed` with the development connection to load the five localized catalog examples. Replaying the same seed keeps the published revision and count stable. A deliberate source edit uses a new revision. The font is the unmodified Regular WOFF2 from the [Adobe Source Sans 3 3.052R release](https://github.com/adobe-fonts/source-sans/releases/tag/3.052R). The importer verifies the original font checksum and [license notice](../catalog/fonts/SourceSans3-OFL.txt).
+After migrations, run `npm run db:seed` with the development connection to load the base catalog. It includes 42 palettes, 37 linear, radial and conic gradients, and 139 distinct opaque named colors with titles and descriptions in all five locales. Color Atlas keeps alternate CSS keywords as aliases of the same swatch. Rerun the seed to add missing entries to an existing local catalog while preserving current published revisions. A deliberate source edit uses a new revision. [W3C named colors](https://www.w3.org/TR/css-color-4/#named-colors)
+
+The base font library contains 15 self-hosted families. Source Sans 3 comes from the [Adobe 3.052R release](https://github.com/adobe-fonts/source-sans/releases/tag/3.052R). The other 14 are unmodified TrueType files from a [pinned Google Fonts revision](https://github.com/google/fonts/tree/06bfe0d62a98375cb09c942fa18e68bd32cff057/ofl). The importer checks each file’s SHA-256 and reads its accompanying SIL OFL notice. The Font Library links the font and its notice separately. Keep the downloaded font beside the stylesheet when using Type Playground’s CSS export.
 
 ## Localized releases
 
