@@ -4,10 +4,12 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=22"
   },
   "scripts": {
+    "dev": "npm run build && node dist/src/http/cli.js",
     "build": "tsc",
+    "lint": "tsc --noEmit",
     "start": "node dist/src/http/cli.js",
     "release:rehearse": "npm run build --silent && node dist/tests/rehearse-release.js",
     "release:gate": "npm run build --silent && node dist/src/release/gate-cli.js",

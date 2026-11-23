@@ -55,7 +55,7 @@ function navigationLocale(request: Request) {
 }
 
 export function webHttp(dependencies: CatalogHttpDependencies & {
-  adFrameUrl?: string; verifyIdentity?: VerifyIdentity; indexing?: boolean;
+  adFrameUrl?: string; verifyIdentity?: VerifyIdentity; indexing?: boolean; allowEmbedding?: boolean;
 }) {
   const discovery = discoveryPage(dependencies);
   const fonts = fontToolsPage(dependencies);
@@ -87,7 +87,7 @@ export function webHttp(dependencies: CatalogHttpDependencies & {
     const notice = (key: 'unavailable' | 'unreleased' | 'loadError') => '<p>' + html(webText(locale, key)) + '</p>';
     const missing = () => renderShell(request, { locale, screen: '', title: webText(locale, 'missing'),
       content: heading(webText(locale, 'missing')) + '<p><a href="' + pathFor(locale, '') + '">' +
-        html(webText(locale, 'home')) + '</a></p>', status: 404 });
+        html(webText(locale, 'home')) + '</a></p>', status: 404, allowEmbedding: dependencies.allowEmbedding });
     if (!route || !isLocale(first) || !knownScreens.has(screen) || (route[4] && !topic) ||
         (entry && (entry.length > 100 || !slugPattern.test(entry)))) return missing();
     if (url.pathname.endsWith('/')) {
@@ -96,7 +96,8 @@ export function webHttp(dependencies: CatalogHttpDependencies & {
     const namedScreen = screen as Screen;
     if (screen === 'catalog-admin' && !entry) return adminPortal(request, locale, dependencies);
     const title = screenTitle(locale, namedScreen);
-    const base = { locale, screen: namedScreen, title, slug: entry, topic, adFrame, indexing: dependencies.indexing };
+    const base = { locale, screen: namedScreen, title, slug: entry, topic, adFrame, indexing: dependencies.indexing,
+      allowEmbedding: dependencies.allowEmbedding };
     if (!screen && !entry) return renderShell(request, { ...base, content: homeScreen(locale), index: true });
     if (screen === 'palette-studio' && !entry) return renderShell(request, { ...base, content: paletteStudio(locale),
       index: true, module: '/src/web/studio-client.js' });

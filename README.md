@@ -2,13 +2,15 @@
 
 ## Development
 
-Use Node.js from [.node-version](.node-version) and a disposable PostgreSQL 18 instance. Run `npm ci` and `docker compose up -d --wait postgres`. For integration tests, set `COLOR_KITCHEN_TEST_DATABASE_URL` to `postgresql://ck_dev:ck_dev_local@127.0.0.1:55432/color_kitchen_test` and run `npm test`. The test runner creates and drops uniquely named databases in that isolated instance. A local PostgreSQL 18 installation with a disposable `color_kitchen_test` database and a role allowed to create databases also works.
+Use Node.js 22 or newer (`engines.node >=22`; CI and Docker pin [.node-version](.node-version)). For quick local or preview startup without PostgreSQL, run `npm run dev`, which compiles TypeScript and launches the server on port `3000` using an in-memory catalog seeded from `src/catalog/base-data.ts` whenever `DATABASE_URL` is unset, unreachable, or unmigrated. See [preview and local dev runtime](docs/preview-runtime.md) and [CHANGELOG.md](CHANGELOG.md).
+
+For full PostgreSQL persistence and integration tests, run `npm ci` and `docker compose up -d --wait postgres` (PostgreSQL 18). Set `COLOR_KITCHEN_TEST_DATABASE_URL` to `postgresql://ck_dev:ck_dev_local@127.0.0.1:55432/color_kitchen_test` and run `npm test`. The test runner creates and drops uniquely named databases in that isolated instance. A local PostgreSQL 18 installation with a disposable `color_kitchen_test` database and a role allowed to create databases also works.
 
 Install the integration browser using `npx playwright install chromium`. To use a local Chromium installation, set `COLOR_KITCHEN_CHROMIUM_EXECUTABLE` to its executable path.
 
 Run `npm run db:migrate` with `DATABASE_URL` set to an intended development database. The command reports the verified schema head and migrations applied. See the [database runbook](docs/database.md) and [technology register](docs/technology.md).
 
-Start the compiled HTTP server with `npm start` and open `http://localhost:3000` for the public workspace. To load settings from a local file, copy [.env.example](.env.example) to `.env` and run `node --env-file=.env dist/src/http/cli.js`. See the [environment configuration](docs/environment-configuration.md) and [public HTTP contract](docs/public-http.md).
+Start the compiled HTTP server with `npm start` (or `npm run dev` to build and start) and open `http://localhost:3000` for the public workspace. To load settings from a local file, copy [.env.example](.env.example) to `.env` and run `node --env-file=.env dist/src/http/cli.js`. See the [environment configuration](docs/environment-configuration.md) and [public HTTP contract](docs/public-http.md).
 
 The [private HTTP contract](docs/private-http.md) covers application identity, project access and theme release APIs.
 

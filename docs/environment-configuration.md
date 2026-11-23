@@ -17,9 +17,28 @@ For production use `COLOR_KITCHEN_ORIGIN=https://color-kitchen.com` and `COLOR_K
 
 ## Google Cloud production
 
-Set the production origin and indexing flag on the selected Google Cloud service. Keep database credentials and feature keys in Secret Manager and grant the runtime identity access to the secrets it uses. The application accepts the same variable names across Google Cloud services. The compute service has yet to be selected. [Google Cloud Secret Manager](https://cloud.google.com/secret-manager/docs/overview)
+Set the production origin and indexing flag on the selected Google Cloud service. Keep database credentials and feature keys in Secret Manager and grant the runtime identity access to the secrets it uses. The application accepts the same variable names across Google Cloud services. [Google Cloud Secret Manager](https://cloud.google.com/secret-manager/docs/overview)
 
-If you choose Cloud Run, use the service’s Variables and Secrets settings and let Cloud Run supply `PORT`. The release image already listens on `0.0.0.0` in the container. If you enable inquiry delivery or staff catalog background polling there, give the workers CPU and a running instance between requests, or run them on an independently scheduled service. [Cloud Run runtime contract](https://cloud.google.com/run/docs/container-contract) · [Cloud Run environment configuration](https://cloud.google.com/run/docs/configuring/services/environment-variables) · [Cloud Run background execution](https://cloud.google.com/run/docs/configuring/billing-settings#background_execution_considerations)
+### Cloud Run settings
+
+| Property | Value |
+| --- | --- |
+| `DATABASE_URL` | Connection URL for the migrated PostgreSQL database, using the app’s runtime database user. Reference it from Secret Manager. |
+| `HOST` | `0.0.0.0`. The repository’s Docker image already sets this. |
+| `PORT` | Do **not** set `PORT` in the Cloud Run environment variable list; Cloud Run injects `8080` by default. If you want `3000`, set Cloud Run’s **Container port** to `3000`. |
+| `COLOR_KITCHEN_ORIGIN` | `https://color-kitchen.com` once the custom domain is serving the app. While testing, use your exact Cloud Run `https://…run.app` URL without any path. |
+| `COLOR_KITCHEN_INDEXING` | `false` for the test service. Set `true` when the production domain is ready for indexing. |
+| `COLOR_KITCHEN_MEASUREMENT` | `false` for the initial deployment. Set `true` when enabling consented palette usage measurement. |
+
+When `COLOR_KITCHEN_ORIGIN` and `DATABASE_URL` are both set, the server connects directly to PostgreSQL without falling back to the in-memory catalog and enforces `frame-ancestors 'none'` in `Content-Security-Policy`. Use the same hostname in your browser that you configured in `COLOR_KITCHEN_ORIGIN`.
+
+For Cloud SQL for PostgreSQL using the Cloud Run Unix socket connection, format the `DATABASE_URL` secret as:
+
+```text
+postgresql://DB_USER:URL_ENCODED_PASSWORD@localhost/DB_NAME?host=%2Fcloudsql%2FPROJECT_ID%3AREGION%3AINSTANCE_ID
+```
+
+Attach the Cloud SQL instance to the Cloud Run service, grant its runtime service account **Cloud SQL Client** and access to the `DATABASE_URL` secret, apply migrations with the migration role (`npm run db:migrate`), and seed a fresh database (`npm run db:seed`) if you want the bundled palettes, gradients, colors, and fonts. If you enable inquiry delivery or staff catalog background polling on Cloud Run, allocate CPU and a running instance between requests, or run them on an independently scheduled service. [Database runbook](database.md) · [Cloud Run runtime contract](https://cloud.google.com/run/docs/container-contract) · [Cloud Run environment configuration](https://cloud.google.com/run/docs/configuring/services/environment-variables) · [Cloud Run background execution](https://cloud.google.com/run/docs/configuring/billing-settings#background_execution_considerations)
 
 ## PostgreSQL
 
