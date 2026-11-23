@@ -1,6 +1,6 @@
 # Public HTTP API v1
 
-Build with `npm run build`, then run `npm start` with `DATABASE_URL` set to a migrated database. Set `HOST`, `PORT` and `COLOR_KITCHEN_ORIGIN` for the intended environment. The development default is loopback port 3000.
+Build with `npm run build`, then run `npm start` with `DATABASE_URL` set to a migrated database. The development default is loopback port 3000. Production and non-loopback listeners require an explicit `COLOR_KITCHEN_ORIGIN`. The [environment configuration](environment-configuration.md) explains how it differs from the internal listener.
 
 ## Catalog, policies and messages
 
@@ -63,7 +63,9 @@ Use a new UUID for each inquiry and retain it across retries with the same conte
 
 Requests stay on the same origin and all responses use `no-store`. Event intake checks the signed consent cookie on every request, returns 403 for disabled measurement, and accepts only published palettes. Signed event tokens expire after 24 hours and carry no user identifier. The signed choice lasts up to 90 days. A deployment uses HTTPS for the Secure, host-only consent cookie.
 
-Configure independent 32-byte hex keys with `COLOR_KITCHEN_CONTACT_ENCRYPT_KEY`, `COLOR_KITCHEN_CONTACT_HMAC_KEY`, `COLOR_KITCHEN_CONSENT_KEY` and `COLOR_KITCHEN_EVENT_KEY`. The contact key identifier defaults to `contact-v1`, and configurable inquiry retention defaults to 30 days. Keep previous contact keys in the deployment key resolver during rotation. Event counting also requires `COLOR_KITCHEN_MEASUREMENT=true`. Delivery runs separately through the configured inquiry worker and provider.
+Configure independent 32-byte hex keys with `COLOR_KITCHEN_CONTACT_ENCRYPT_KEY`, `COLOR_KITCHEN_CONTACT_HMAC_KEY`, `COLOR_KITCHEN_CONSENT_KEY` and `COLOR_KITCHEN_EVENT_KEY`. The contact key identifier defaults to `contact-v1`, and configurable inquiry retention defaults to 30 days. Retain previous inquiry keys through `COLOR_KITCHEN_CONTACT_PREVIOUS_KEYS` when rotating keys for a database with existing inquiries. [Environment configuration](environment-configuration.md)
+
+Event counting also requires `COLOR_KITCHEN_MEASUREMENT=true`. Delivery runs separately through the configured inquiry worker and provider.
 
 For an approved inquiry receiver, set `COLOR_KITCHEN_INQUIRY_WEBHOOK` (HTTPS), `COLOR_KITCHEN_INQUIRY_TOKEN` and `COLOR_KITCHEN_INQUIRY_DEDUP_MS` to its documented idempotency window. The optional worker sends the accepted purpose, locale, reply address and message with a bearer token and a stable `Idempotency-Key`. A 2xx reply acknowledges the handoff. The receiver may return a non-sensitive `X-Delivery-Receipt` header. Select the receiver and verify synthetic delivery before turning it on.
 

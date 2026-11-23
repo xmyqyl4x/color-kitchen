@@ -2,8 +2,36 @@ import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import { advertisingEligibility, createConsentSession } from '../src/operations/consent.js';
+import { contactKeysFromEnvironment } from '../src/operations/contact-crypto.js';
 import { publicSupport } from '../src/operations/public-support.js';
 import { withMigratedDatabase } from './postgres.js';
+
+test('retained inquiry keys allow retries and delivery after the active deployment key changes', async () => {
+  await withMigratedDatabase(async client => {
+    const first = { encryptKey: randomBytes(32).toString('hex'), hmacKey: randomBytes(32).toString('hex') };
+    const keys = contactKeysFromEnvironment({ COLOR_KITCHEN_CONTACT_ENCRYPT_KEY: first.encryptKey,
+      COLOR_KITCHEN_CONTACT_HMAC_KEY: first.hmacKey })!;
+    const source = publicSupport({ client, keys, retentionMs: 172_800_000 });
+    const inquiry = { requestId: randomUUID(), purpose: 'support', locale: 'en', replyEmail: 'person@example.test',
+      message: 'Check the original queued inquiry.' } as const;
+    const receipt = await source.submit('contact', inquiry);
+    assert.equal(receipt.status, 'accepted');
+    const migrated = contactKeysFromEnvironment({
+      COLOR_KITCHEN_CONTACT_KEY_ID: 'contact-v2', COLOR_KITCHEN_CONTACT_ENCRYPT_KEY: randomBytes(32).toString('hex'),
+      COLOR_KITCHEN_CONTACT_HMAC_KEY: randomBytes(32).toString('hex'), COLOR_KITCHEN_CONTACT_PREVIOUS_KEYS: JSON.stringify({ 'contact-v1': first }),
+    })!;
+    assert.equal(migrated.active.id, 'contact-v2');
+    const worker = publicSupport({ client, keys: migrated, retentionMs: 172_800_000,
+      provider: { deduplicationMs: 300_000, async deliver(contact) {
+        assert.equal(contact.replyEmail, inquiry.replyEmail);
+        assert.equal(contact.message, inquiry.message);
+        return { delivered: true, reference: 'retained-inquiry' };
+      } } });
+    assert.deepEqual(await worker.submit('contact', inquiry), receipt);
+    assert.equal(await worker.deliverNext(), 'sent');
+    assert.equal(await worker.deliverNext(), 'empty');
+  });
+});
 
 test('optional processing stays disabled until confirmed and private navigation gets a clean document', async () => {
   let preference: unknown = { advertising: 'yes', analytics: true };

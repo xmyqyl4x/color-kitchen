@@ -3,8 +3,11 @@ services:
     image: ${COLOR_KITCHEN_IMAGE:?Set the verified local candidate image}
     pull_policy: never
     env_file: ${COLOR_KITCHEN_RUNTIME_ENV:?Set the path to a local runtime environment file}
+    environment:
+      HOST: 0.0.0.0
+      PORT: ${COLOR_KITCHEN_RELEASE_CONTAINER_PORT:-3000}
     ports:
-      - "127.0.0.1:${COLOR_KITCHEN_RELEASE_PORT:-58320}:3000"
+      - "127.0.0.1:${COLOR_KITCHEN_RELEASE_PORT:-58320}:${COLOR_KITCHEN_RELEASE_CONTAINER_PORT:-3000}"
     networks:
       - database
 

@@ -1,8 +1,20 @@
 import { createServer, type IncomingMessage } from 'node:http';
 import { Readable } from 'node:stream';
 import { apiError } from './response.js';
+import { isLoopbackHost, listenerUrl, loopbackHost, publicOrigin } from './runtime-config.js';
 
 export type HttpHandler = (request: Request) => Response | Promise<Response>;
+
+function localRequestOrigin(request: IncomingMessage) {
+  const { localAddress = loopbackHost, localPort } = request.socket;
+  if (!localPort) throw new Error('Listener port is unavailable.');
+  // Direct loopback development can use localhost, IPv4, or IPv6 on the listener's actual port.
+  const alias = /^(localhost|127\.0\.0\.1|\[::1\])(?::(\d{1,5}))?$/i.exec(request.headers.host ?? '');
+  if (isLoopbackHost(localAddress) && alias && Number(alias[2] ?? 80) === localPort) {
+    return 'http://' + alias[0].toLowerCase();
+  }
+  return listenerUrl(localAddress, localPort).origin;
+}
 
 function finishRejectedUpload(request: IncomingMessage) {
   if (request.complete || request.destroyed) return;
@@ -29,7 +41,7 @@ function finishRejectedUpload(request: IncomingMessage) {
 }
 
 export function httpServer(handler: HttpHandler, origin?: string) {
-  const serverOrigin = origin ? new URL(origin).origin : undefined;
+  const serverOrigin = origin === undefined ? undefined : publicOrigin(origin);
   return createServer({ requestTimeout: 15_000, headersTimeout: 10_000 }, async (incoming, outgoing) => {
     const method = incoming.method ?? 'GET';
     const cancellation = new AbortController();
@@ -48,7 +60,7 @@ export function httpServer(handler: HttpHandler, origin?: string) {
           init.body = Readable.toWeb(incoming) as ReadableStream<Uint8Array>;
           init.duplex = 'half';
         }
-        const requestOrigin = serverOrigin ?? 'http://127.0.0.1:' + incoming.socket.localPort;
+        const requestOrigin = serverOrigin ?? localRequestOrigin(incoming);
         response = await handler(new Request(requestOrigin + incoming.url, init));
       }
     } catch {

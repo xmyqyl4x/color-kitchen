@@ -123,18 +123,19 @@ export function homeScreen(locale: Locale) {
 
 export function renderShell(request: Request, options: Readonly<{
   locale: Locale; screen: Screen; title: string; content: string; slug?: string; topic?: DiscoveryTopic; index?: boolean;
-  status?: number; seoTitle?: string; description?: string; module?: string; adFrame?: URL;
+  status?: number; seoTitle?: string; description?: string; module?: string; adFrame?: URL; indexing?: boolean;
 }>) {
   const { locale, screen, slug, topic, title, content, status = 200, module } = options;
-  const index = options.index === true && status === 200;
+  const publicPage = options.index === true && status === 200;
+  const index = publicPage && options.indexing !== false;
   const t = (key: Parameters<typeof webText>[1]) => html(webText(locale, key));
   const url = new URL(request.url);
   const localPath = (language: Locale) => topic ? topicPath(language, topic) : pathFor(language, screen, slug);
-  const copy = index && !slug && !topic ? pageSeo(locale, screen) : undefined;
+  const copy = publicPage && !slug && !topic ? pageSeo(locale, screen) : undefined;
   const pageTitle = options.seoTitle ?? copy?.[0] ?? title;
   const fullTitle = pageTitle === 'Color Kitchen' ? pageTitle : pageTitle + ' | Color Kitchen';
   const description = options.description ?? copy?.[1] ?? webText(locale, 'intro');
-  const breadcrumbs = index && (slug || topic) ? [
+  const breadcrumbs = publicPage && (slug || topic) ? [
     { name: webText(locale, 'home'), path: pathFor(locale, '') },
     { name: screenTitle(locale, screen), path: pathFor(locale, screen) },
     { name: title, path: localPath(locale) },

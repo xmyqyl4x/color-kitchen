@@ -13,12 +13,13 @@ import { httpServer } from './server.js';
 import { webHttp } from '../web/http.js';
 import { inquiryWebhook } from '../operations/inquiry-delivery.js';
 import { publicSupport } from '../operations/public-support.js';
+import { contactKeysFromEnvironment } from '../operations/contact-crypto.js';
+import { runtimeFromEnvironment } from './runtime-config.js';
 
+const runtime = runtimeFromEnvironment(process.env);
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error('Set DATABASE_URL to a migrated Color Kitchen database.');
-const port = Number(process.env.PORT ?? 3000);
-if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Set PORT to a valid TCP port.');
-const pool = new pg.Pool({ connectionString, max: 10, connectionTimeoutMillis: 3000, statement_timeout: 5000 });
+const pool = new pg.Pool({ connectionString, ...runtime.pool });
 pool.on('error', () => console.error('An idle PostgreSQL client was disconnected.'));
 async function withClient<T>(work: (client: ClientBase) => Promise<T>) {
   const client = await pool.connect();
@@ -50,20 +51,16 @@ function secret(name: string) {
   if (!/^[0-9a-f]{64}$/i.test(setting)) throw new Error('Invalid key format for ' + name);
   return Buffer.from(setting, 'hex');
 }
-const encryptKey = secret('COLOR_KITCHEN_CONTACT_ENCRYPT_KEY');
-const hmacKey = secret('COLOR_KITCHEN_CONTACT_HMAC_KEY');
-const keyId = process.env.COLOR_KITCHEN_CONTACT_KEY_ID ?? 'contact-v1';
+const contactKeys = contactKeysFromEnvironment(process.env);
 const contactDays = Number(process.env.COLOR_KITCHEN_CONTACT_RETENTION_DAYS ?? 30);
-if (!/^[a-z0-9_-]{1,48}$/i.test(keyId)) throw new Error('Invalid contact key identifier.');
 if (!Number.isInteger(contactDays) || contactDays < 1 || contactDays > 365) throw new Error('Invalid inquiry retention period.');
-const active = encryptKey && hmacKey ? { id: keyId, encryptKey, hmacKey } : undefined;
-const contact = active ? { keys: { active, resolve: (id: string) => id === active.id ? active : undefined },
-    retentionMs: contactDays * 86_400_000 } : undefined;
+const contact = contactKeys ? { keys: contactKeys, retentionMs: contactDays * 86_400_000 } : undefined;
 const operations = operationsHttp({
   withClient, measurement, contact,
   consentKey: secret('COLOR_KITCHEN_CONSENT_KEY'), eventKey: secret('COLOR_KITCHEN_EVENT_KEY'),
 });
-const web = webHttp({ withClient, measurement, verifyIdentity, adFrameUrl: process.env.COLOR_KITCHEN_AD_FRAME_URL });
+const web = webHttp({ withClient, measurement, verifyIdentity, indexing: runtime.indexing,
+  adFrameUrl: process.env.COLOR_KITCHEN_AD_FRAME_URL });
 const delivery = process.env.COLOR_KITCHEN_INQUIRY_WEBHOOK;
 const deliver = delivery && contact ? inquiryWebhook({ url: delivery, token: process.env.COLOR_KITCHEN_INQUIRY_TOKEN ?? '',
   deduplicationMs: Number(process.env.COLOR_KITCHEN_INQUIRY_DEDUP_MS ?? 0) }) : undefined;
@@ -72,9 +69,8 @@ const server = httpServer(async request => {
   if (pathname === guidePath) return guide(request);
   if (pathname.startsWith('/api/')) return await operations(request) ?? await projectThemes(request) ?? await adminCatalog(request) ?? catalog(request);
   return web(request);
-},
-  process.env.COLOR_KITCHEN_ORIGIN ?? 'http://localhost:' + port);
-server.listen(port, process.env.HOST ?? '127.0.0.1', () => console.log('Color Kitchen HTTP server listening on port ' + port));
+}, runtime.origin);
+server.listen(runtime.port, runtime.host, () => console.log('Color Kitchen HTTP server listening on port ' + runtime.port));
 let stopping = false;
 let deliveryTimer: ReturnType<typeof setTimeout> | undefined;
 let catalogTimer: ReturnType<typeof setTimeout> | undefined;

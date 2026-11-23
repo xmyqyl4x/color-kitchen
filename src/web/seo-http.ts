@@ -13,16 +13,17 @@ type Collection = keyof typeof collections;
 export const hasDiscoveryFilters = (params: URLSearchParams, keys: readonly string[]) =>
   keys.some(key => params.getAll(key).some(value => value.trim() !== ''));
 
-export function seoHttp(dependencies: CatalogHttpDependencies) {
+export function seoHttp(dependencies: CatalogHttpDependencies, indexing = true) {
   return async (request: Request, url: URL) => {
     const head = request.method === 'HEAD';
     if (url.pathname === '/robots.txt') {
-      const text = 'User-agent: *\nDisallow: /api/\n\nSitemap: ' + new URL('/sitemap.xml', url).href + '\n';
+      const text = 'User-agent: *\nDisallow: /api/\n' + (indexing ? '\nSitemap: ' + new URL('/sitemap.xml', url).href + '\n' : '');
       return new Response(head ? null : text, { headers: {
         'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=300',
       } });
     }
     if (url.pathname !== '/sitemap.xml') return null;
+    if (!indexing) return new Response(null, { status: 404, headers: { 'X-Robots-Tag': 'noindex', 'Cache-Control': 'no-store' } });
     try {
       const { entries, topics } = await dependencies.withClient(client => inTransaction(client, async () => {
         await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
