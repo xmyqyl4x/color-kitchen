@@ -5,7 +5,7 @@ import { slugPattern } from '../catalog/repository.js';
 import type { CatalogHttpDependencies } from '../http/public-catalog.js';
 import { resolveLocale } from '../i18n/resolve.js';
 import { isLocale } from '../model/locales.js';
-import { approvedAdFrame, homeScreen, html, pathFor, renderShell } from './shell.js';
+import { approvedAdFrame, approvedGoogleTagId, homeScreen, html, pathFor, renderShell } from './shell.js';
 import { screenRoutes, screenTitle, webText, type Screen } from './strings.js';
 import { paletteStudio } from './studio.js';
 import { collectionScreen } from './collection.js';
@@ -55,11 +55,12 @@ function navigationLocale(request: Request) {
 }
 
 export function webHttp(dependencies: CatalogHttpDependencies & {
-  adFrameUrl?: string; verifyIdentity?: VerifyIdentity; indexing?: boolean; allowEmbedding?: boolean;
+  adFrameUrl?: string; verifyIdentity?: VerifyIdentity; indexing?: boolean; allowEmbedding?: boolean; googleTagId?: string;
 }) {
   const discovery = discoveryPage(dependencies);
   const fonts = fontToolsPage(dependencies);
   const adFrame = approvedAdFrame(dependencies.adFrameUrl);
+  const googleTagId = approvedGoogleTagId(dependencies.googleTagId);
   const seo = seoHttp(dependencies, dependencies.indexing);
 
   return async (request: Request) => {
@@ -87,17 +88,17 @@ export function webHttp(dependencies: CatalogHttpDependencies & {
     const notice = (key: 'unavailable' | 'unreleased' | 'loadError') => '<p>' + html(webText(locale, key)) + '</p>';
     const missing = () => renderShell(request, { locale, screen: '', title: webText(locale, 'missing'),
       content: heading(webText(locale, 'missing')) + '<p><a href="' + pathFor(locale, '') + '">' +
-        html(webText(locale, 'home')) + '</a></p>', status: 404, allowEmbedding: dependencies.allowEmbedding });
+        html(webText(locale, 'home')) + '</a></p>', status: 404, allowEmbedding: dependencies.allowEmbedding, googleTagId });
     if (!route || !isLocale(first) || !knownScreens.has(screen) || (route[4] && !topic) ||
         (entry && (entry.length > 100 || !slugPattern.test(entry)))) return missing();
     if (url.pathname.endsWith('/')) {
       return new Response(null, { status: 308, headers: { Location: url.pathname.slice(0, -1) + url.search } });
     }
     const namedScreen = screen as Screen;
-    if (screen === 'catalog-admin' && !entry) return adminPortal(request, locale, dependencies);
+    if (screen === 'catalog-admin' && !entry) return adminPortal(request, locale, dependencies, { allowEmbedding: dependencies.allowEmbedding, googleTagId });
     const title = screenTitle(locale, namedScreen);
     const base = { locale, screen: namedScreen, title, slug: entry, topic, adFrame, indexing: dependencies.indexing,
-      allowEmbedding: dependencies.allowEmbedding };
+      allowEmbedding: dependencies.allowEmbedding, googleTagId };
     if (!screen && !entry) return renderShell(request, { ...base, content: homeScreen(locale), index: true });
     if (screen === 'palette-studio' && !entry) return renderShell(request, { ...base, content: paletteStudio(locale),
       index: true, module: '/src/web/studio-client.js' });
