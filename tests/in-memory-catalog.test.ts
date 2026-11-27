@@ -143,3 +143,37 @@ test('webHttp and catalogHttp render all major routes cleanly against the in-mem
   const body = await apiRes.json() as { data: { items: unknown[] } };
   assert.equal(body.data.items.length, 5);
 });
+
+test('Google Tag (GTM-NC6J92RS) renders immediately after <head> once per page with matching CSP', async () => {
+  const { approvedGoogleTagId, defaultGoogleTagId } = await import('../src/web/shell.js');
+  assert.equal(defaultGoogleTagId, 'GTM-NC6J92RS');
+  assert.equal(approvedGoogleTagId('GTM-NC6J92RS'), 'GTM-NC6J92RS');
+  assert.equal(approvedGoogleTagId('off'), undefined);
+  assert.equal(approvedGoogleTagId('false'), undefined);
+  assert.equal(approvedGoogleTagId(''), undefined);
+  assert.throws(() => approvedGoogleTagId('"><script>alert(1)</script>'), RangeError);
+
+  const client = createInMemoryCatalogClient();
+  const deps = {
+    async withClient<T>(work: (db: typeof client) => Promise<T>) {
+      return work(client);
+    },
+  };
+  const taggedWeb = webHttp({ ...deps, googleTagId: defaultGoogleTagId });
+  for (const path of ['/en', '/en/palette-studio', '/fr/palettes/forest-study', '/en/not-a-real-route']) {
+    const res = await taggedWeb(new Request('https://www.color-kitchen.com' + path));
+    const html = await res.text();
+    const expectedHeadStart = '<head>\n    <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-NC6J92RS"></script>\n    <script>\n  window.dataLayer = window.dataLayer || [];\n  function gtag(){dataLayer.push(arguments);}\n  gtag(\'js\', new Date());\n</script>';
+    assert.ok(html.includes(expectedHeadStart), `Expected Google tag immediately after <head> on ${path}`);
+    assert.equal(html.match(/googletagmanager\.com\/gtm\.js\?id=GTM-NC6J92RS/g)?.length, 1, `Expected exactly one Google tag on ${path}`);
+
+    const csp = res.headers.get('content-security-policy') ?? '';
+    assert.match(csp, /script-src[^;]*https:\/\/www\.googletagmanager\.com/);
+    assert.match(csp, /connect-src[^;]*https:\/\/\*\.google-analytics\.com/);
+    assert.doesNotMatch(csp, /unsafe-inline/i);
+  }
+
+  const untaggedWeb = webHttp(deps);
+  const untaggedHtml = await (await untaggedWeb(new Request('http://localhost:3000/en'))).text();
+  assert.doesNotMatch(untaggedHtml, /googletagmanager\.com/);
+});

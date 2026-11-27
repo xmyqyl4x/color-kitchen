@@ -14,6 +14,7 @@ All notable changes to Color Kitchen are documented in this file.
 - **`docs/cloudsql-setup.md`**: Added a dedicated Cloud SQL for PostgreSQL setup and operations runbook documenting the `ai-studio-5c9c23da` (`us-east1`) instance, `SQL_*` runtime/admin environment variables, dual-schema (`public` Drizzle vs `ck` migrations) architecture, automatic `SQL_USER` grants, 5-locale catalog seeding, Firebase Auth `/api/v1/account/*` contract, and bootstrap verification steps.
 - **`tests/cloudsql-account.test.ts`**: Added unit tests verifying Cloud SQL environment variable detection and Firebase-authenticated `/api/v1/account/*` authorization and payload validation.
 - **`package.json` scripts**: Added `"dev": "npm run build && node dist/src/http/cli.js"` and `"lint": "tsc --noEmit"`.
+- **`src/web/shell.ts`, `src/web/http.ts`, `src/web/admin.ts`, `src/http/cli.ts`**: Added Google Tag (`GTM-NC6J92RS`) injection immediately after `<head>` on every rendered HTML page (once per page) with SHA-256 CSP inline-script hashing and Google Tag Manager/Analytics CSP allowlists, configurable via optional `COLOR_KITCHEN_GTM_ID` (defaults to `GTM-NC6J92RS`, `off` to disable).
 
 ### Changed
 - **`src/http/cli.ts`**:

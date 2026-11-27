@@ -10,10 +10,43 @@ export function html(value: string) {
   return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
 }
 
+export const defaultGoogleTagId = 'GTM-NC6J92RS';
 const importMap = '{"imports":{"pdf-lib":"/vendor/pdf-lib.js"}}';
 const importMapHash = createHash('sha256').update(importMap).digest('base64');
-const basePolicy = "default-src 'self'; script-src 'self' 'sha256-" + importMapHash +
-  "'; img-src 'self' blob: data:; worker-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'";
+const googleTagInlineScript = "\n  window.dataLayer = window.dataLayer || [];\n  function gtag(){dataLayer.push(arguments);}\n  gtag('js', new Date());\n";
+const googleTagInlineHash = createHash('sha256').update(googleTagInlineScript).digest('base64');
+
+export function approvedGoogleTagId(config?: string) {
+  if (!config) return undefined;
+  const value = config.trim();
+  if (!value || /^(?:false|off|none)$/i.test(value)) return undefined;
+  if (!/^(?:GTM|G)-[A-Z0-9]+$/.test(value)) {
+    throw new RangeError('Google tag configuration requires a valid GTM- or G- container ID.');
+  }
+  return value;
+}
+
+function contentSecurityPolicy(options: Readonly<{ allowEmbedding?: boolean; ad?: URL; googleTagId?: string }>) {
+  const scriptSrc = ["'self'", "'sha256-" + importMapHash + "'"];
+  const imgSrc = ["'self'", 'blob:', 'data:'];
+  const connectSrc = ["'self'"];
+  if (options.googleTagId) {
+    scriptSrc.push("'sha256-" + googleTagInlineHash + "'", 'https://www.googletagmanager.com', 'https://www.google-analytics.com');
+    imgSrc.push('https://www.googletagmanager.com', 'https://www.google-analytics.com', 'https://*.google-analytics.com');
+    connectSrc.push('https://www.googletagmanager.com', 'https://www.google-analytics.com', 'https://*.google-analytics.com', 'https://*.analytics.google.com');
+  }
+  return [
+    "default-src 'self'",
+    'script-src ' + scriptSrc.join(' '),
+    'img-src ' + imgSrc.join(' '),
+    "worker-src 'self'",
+    'connect-src ' + connectSrc.join(' '),
+    "base-uri 'none'",
+    "form-action 'self'",
+    ...(options.allowEmbedding ? [] : ["frame-ancestors 'none'"]),
+    'frame-src ' + (options.ad?.origin ?? "'none'"),
+  ].join('; ');
+}
 
 export const pathFor = (locale: Locale, screen: Screen, slug?: string) =>
   '/' + locale + (screen ? '/' + screen : '') + (slug ? '/' + slug : '');
@@ -124,9 +157,10 @@ export function homeScreen(locale: Locale) {
 export function renderShell(request: Request, options: Readonly<{
   locale: Locale; screen: Screen; title: string; content: string; slug?: string; topic?: DiscoveryTopic; index?: boolean;
   status?: number; seoTitle?: string; description?: string; module?: string; adFrame?: URL; indexing?: boolean;
-  allowEmbedding?: boolean;
+  allowEmbedding?: boolean; googleTagId?: string;
 }>) {
   const { locale, screen, slug, topic, title, content, status = 200, module } = options;
+  const googleTagId = approvedGoogleTagId(options.googleTagId);
   const publicPage = options.index === true && status === 200;
   const index = publicPage && options.indexing !== false;
   const t = (key: Parameters<typeof webText>[1]) => html(webText(locale, key));
@@ -159,7 +193,10 @@ export function renderShell(request: Request, options: Readonly<{
     return '<a data-focus-key="language-' + language + '" href="' + html(localPath(language) + languageQuery) +
       '" hreflang="' + language + '" lang="' + language + '"' + current + '>' + languageNames[language] + '</a>';
   }).join('');
-  const markup = `<!doctype html><html lang="${locale}"><head>
+  const googleTagHead = googleTagId
+    ? `\n    <script async src="https://www.googletagmanager.com/gtm.js?id=${html(googleTagId)}"></script>\n    <script>${googleTagInlineScript}</script>`
+    : '';
+  const markup = `<!doctype html><html lang="${locale}"><head>${googleTagHead}
     <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>${html(fullTitle)}</title>
     <meta name="description" content="${html(description)}">
@@ -192,7 +229,7 @@ export function renderShell(request: Request, options: Readonly<{
     'Content-Type': 'text/html; charset=utf-8', 'Content-Language': locale,
     'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin',
     ...(index ? {} : { 'X-Robots-Tag': 'noindex' }),
-    'Content-Security-Policy': basePolicy + (options.allowEmbedding ? '' : "; frame-ancestors 'none'") + '; frame-src ' + (ad?.origin ?? "'none'"),
+    'Content-Security-Policy': contentSecurityPolicy({ allowEmbedding: options.allowEmbedding, ad, googleTagId }),
     'Set-Cookie': 'ck_locale=' + locale + '; Path=/; Max-Age=31536000; SameSite=Lax' + (url.protocol === 'https:' ? '; Secure' : ''),
   } });
 }

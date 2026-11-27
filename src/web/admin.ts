@@ -109,9 +109,14 @@ function catalogAdminContent(locale: Locale, roles: CatalogStaffRole[]) {
   </div>`;
 }
 
-export async function adminPortal(request: Request, locale: Locale, deps: ProtectedDependencies) {
+export async function adminPortal(
+  request: Request,
+  locale: Locale,
+  deps: ProtectedDependencies,
+  options?: Readonly<{ allowEmbedding?: boolean; googleTagId?: string }>,
+) {
   const title = screenTitle(locale, 'catalog-admin');
-  const shell = { locale, screen: 'catalog-admin', title, description: title } as const;
+  const shell = { locale, screen: 'catalog-admin', title, description: title, ...options } as const;
   const denied = (status: number, code: string) => renderShell(request, { ...shell, status,
     content: `<h1>${html(title)}</h1><p>${html(adminErrorMessage(locale, code))}</p>` });
   const identity = identifyRequest(request, deps.verifyIdentity);

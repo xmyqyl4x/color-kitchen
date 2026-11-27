@@ -12,7 +12,7 @@ import { accountHttp } from './account.js';
 import { deliverCatalogInvalidation, revalidateCatalog } from '../catalog/invalidation.js';
 import { httpServer } from './server.js';
 import { webHttp } from '../web/http.js';
-import { approvedAdFrame } from '../web/shell.js';
+import { approvedAdFrame, approvedGoogleTagId, defaultGoogleTagId } from '../web/shell.js';
 import { inquiryWebhook } from '../operations/inquiry-delivery.js';
 import { publicSupport } from '../operations/public-support.js';
 import { contactKeysFromEnvironment } from '../operations/contact-crypto.js';
@@ -102,9 +102,12 @@ const operations = operationsHttp({
   withClient, measurement, contact,
   consentKey: secret('COLOR_KITCHEN_CONSENT_KEY'), eventKey: secret('COLOR_KITCHEN_EVENT_KEY'),
 });
+const googleTagId = env.COLOR_KITCHEN_GTM_ID === undefined
+  ? defaultGoogleTagId
+  : optionalSetting('COLOR_KITCHEN_GTM_ID', () => approvedGoogleTagId(env.COLOR_KITCHEN_GTM_ID));
 const web = webHttp({ withClient, measurement, verifyIdentity, indexing: runtime.indexing,
   adFrameUrl: optionalSetting('COLOR_KITCHEN_AD_FRAME_URL', () => approvedAdFrame(env.COLOR_KITCHEN_AD_FRAME_URL)?.href),
-  allowEmbedding: !isProduction });
+  allowEmbedding: !isProduction, googleTagId });
 const delivery = env.COLOR_KITCHEN_INQUIRY_WEBHOOK;
 const deliver = delivery && contact
   ? optionalSetting('COLOR_KITCHEN_INQUIRY_WEBHOOK', () => inquiryWebhook({ url: delivery, token: env.COLOR_KITCHEN_INQUIRY_TOKEN ?? '',
