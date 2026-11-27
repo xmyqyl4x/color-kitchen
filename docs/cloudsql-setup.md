@@ -10,7 +10,8 @@ This runbook documents the provisioned Google Cloud SQL for PostgreSQL architect
 | Instance name | `ai-studio-5c9c23da` |
 | Region | `us-east1` |
 | Google Cloud project | `gen-lang-client-0453791496` |
-| Auth provider | Firebase Authentication (Google Sign-In via `firebase-applet-config.json`) |
+| Auth provider | Firebase Authentication (Google Sign-In via `firebase-applet-config.json`; authorize `www.color-kitchen.com` for production) |
+| Canonical production origin | `https://www.color-kitchen.com` (map `www` via Cloud Run `CNAME`, `301` redirect apex `color-kitchen.com` → `https://www.color-kitchen.com`) |
 
 ## Connection Model and Environment Variables
 

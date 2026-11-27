@@ -44,18 +44,18 @@ test('production startup requires a public origin and PostgreSQL connection URL'
     NODE_ENV: 'production',
     HOST: '0.0.0.0',
     PORT: '8080',
-    COLOR_KITCHEN_ORIGIN: 'https://color-kitchen.com',
+    COLOR_KITCHEN_ORIGIN: 'https://www.color-kitchen.com',
     COLOR_KITCHEN_INDEXING: 'false',
     DATABASE_URL: 'postgresql://ck_runtime@localhost/color_kitchen?host=%2Fcloudsql%2Fexample%3Aus-west1%3Ainstance',
   };
   const prod = resolveCliRuntime(env);
   assert.equal(prod.isProduction, true);
-  assert.equal(prod.runtime.origin, 'https://color-kitchen.com');
+  assert.equal(prod.runtime.origin, 'https://www.color-kitchen.com');
   assert.equal(prod.runtime.port, 8080);
   assert.equal(prod.runtime.indexing, false);
   assert.equal(prod.connectionString, env.DATABASE_URL);
 
-  for (const origin of [undefined, '  ', 'https://color-kitchen.com/en']) {
+  for (const origin of [undefined, '  ', 'https://www.color-kitchen.com/en']) {
     assert.throws(() => resolveCliRuntime({ ...env, COLOR_KITCHEN_ORIGIN: origin }), /COLOR_KITCHEN_ORIGIN/);
   }
   for (const database of [undefined, '  ']) {
