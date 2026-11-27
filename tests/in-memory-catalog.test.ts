@@ -176,4 +176,16 @@ test('Google Tag (GTM-NC6J92RS) renders immediately after <head> once per page w
   const untaggedWeb = webHttp(deps);
   const untaggedHtml = await (await untaggedWeb(new Request('http://localhost:3000/en'))).text();
   assert.doesNotMatch(untaggedHtml, /googletagmanager\.com/);
+
+  const { seoKeywords } = await import('../src/web/seo-text.js');
+  const { locales } = await import('../src/model/locales.js');
+  const distinctKeywordSets = new Set<string>();
+  for (const locale of locales) {
+    const keywords = seoKeywords(locale);
+    distinctKeywordSets.add(keywords);
+    const pageHtml = await (await untaggedWeb(new Request('http://localhost:3000/' + locale))).text();
+    const expectedKeywordsTag = '<meta name="keywords" itemprop="keywords" content="' + keywords + '">';
+    assert.ok(pageHtml.includes(expectedKeywordsTag), `Expected localized SEO keywords meta tag for ${locale}`);
+  }
+  assert.equal(distinctKeywordSets.size, locales.length, 'Expected distinct localized keyword sets per locale');
 });

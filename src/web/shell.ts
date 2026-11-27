@@ -3,7 +3,7 @@ import { advertisingEligibility } from '../operations/consent.js';
 import { trustText } from './trust-text.js';
 import { locales, type Locale } from '../model/locales.js';
 import { topicPath, type DiscoveryTopic } from './discovery-topics.js';
-import { pageSeo, seoLabels } from './seo-text.js';
+import { pageSeo, seoKeywords, seoLabels } from './seo-text.js';
 import { createRoutes, exploreRoutes, helpRoutes, languageNames, screenTitle, webText, type Screen } from './strings.js';
 
 export function html(value: string) {
@@ -200,6 +200,7 @@ export function renderShell(request: Request, options: Readonly<{
     <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>${html(fullTitle)}</title>
     <meta name="description" content="${html(description)}">
+    <meta name="keywords" itemprop="keywords" content="${html(seoKeywords(locale))}">
     ${metadata}<link rel="stylesheet" href="/assets/kitchen.css">
     <script type="importmap">${importMap}</script><script type="module" src="/src/web/shell-client.js"></script>
     ${module ? '<script type="module" src="' + html(module) + '"></script>' : ''}

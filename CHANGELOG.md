@@ -15,6 +15,7 @@ All notable changes to Color Kitchen are documented in this file.
 - **`tests/cloudsql-account.test.ts`**: Added unit tests verifying Cloud SQL environment variable detection and Firebase-authenticated `/api/v1/account/*` authorization and payload validation.
 - **`package.json` scripts**: Added `"dev": "npm run build && node dist/src/http/cli.js"` and `"lint": "tsc --noEmit"`.
 - **`src/web/shell.ts`, `src/web/http.ts`, `src/web/admin.ts`, `src/http/cli.ts`**: Added Google Tag (`GTM-NC6J92RS`) injection immediately after `<head>` on every rendered HTML page (once per page) with SHA-256 CSP inline-script hashing and Google Tag Manager/Analytics CSP allowlists, configurable via optional `COLOR_KITCHEN_GTM_ID` (defaults to `GTM-NC6J92RS`, `off` to disable).
+- **`src/web/seo-text.ts`, `src/web/shell.ts`**: Added localized global SEO `<meta name="keywords" itemprop="keywords" content="...">` metadata for all five supported locales (`en`, `fr`, `es`, `pt`, `de`) to every rendered HTML page `<head>`.
 
 ### Changed
 - **`src/http/cli.ts`**:
