@@ -6,14 +6,14 @@ Color Kitchen builds one application artifact. Deployment settings go into the r
 
 | Setting | Where to set it | Behavior |
 | --- | --- | --- |
-| `COLOR_KITCHEN_ORIGIN` | Web service runtime environment | The browser-facing origin, such as `https://color-kitchen.com` in production. Include the scheme and an external port when it is part of the address. The same setting controls sitemap URLs, `robots.txt`, canonical and language links, social URLs, same-origin writes, and HTTPS cookie handling. The server requires it in production and on non-loopback listeners. |
+| `COLOR_KITCHEN_ORIGIN` | Web service runtime environment | The browser-facing origin, such as `https://www.color-kitchen.com` in production. Include the scheme and an external port when it is part of the address. The same setting controls sitemap URLs, `robots.txt`, canonical and language links, social URLs, same-origin writes, and HTTPS cookie handling. The server requires it in production and on non-loopback listeners. |
 | `HOST` and `PORT` | Web service runtime environment | The internal address and port the process listens on. Direct Node runs default to `127.0.0.1:3000`. The Docker image defaults to `0.0.0.0:3000`. The container health check uses this listener. |
 | `COLOR_KITCHEN_INDEXING` | Web service runtime environment | Defaults to `true`. Set it to `false` for a staging site or public preview that search engines should exclude. Public HTML sends `noindex` and the sitemap is disabled. |
 | `COLOR_KITCHEN_RELEASE_PORT` and `COLOR_KITCHEN_RELEASE_CONTAINER_PORT` | Local release Compose environment | Select the loopback host port and container port. They default to `58320` and `3000`. Compose sets the container listener port from the same value it maps. |
 
-The previous production fallback could put a loopback host and internal port into public metadata. Direct loopback development now derives its URL from the actual listener and accepts a matching `localhost`, IPv4 or IPv6 loopback URL. Deployed runtimes use the configured origin regardless of proxy headers. At the ingress, terminate TLS and redirect any secondary domain to the configured canonical host.
+The previous production fallback could put a loopback host and internal port into public metadata. Direct loopback development now derives its URL from the actual listener and accepts a matching `localhost`, IPv4 or IPv6 loopback URL. Deployed runtimes use the configured origin regardless of proxy headers. At the ingress, terminate TLS and redirect any secondary domain (such as apex `color-kitchen.com`) with a `301` redirect to the configured canonical `www` host.
 
-For production use `COLOR_KITCHEN_ORIGIN=https://color-kitchen.com` and `COLOR_KITCHEN_INDEXING=true`. If hosted staging is added, set its own HTTPS origin and `COLOR_KITCHEN_INDEXING=false`. For a local Docker release, use the loopback URL visitors actually open, including its mapped port. The release rehearsal can use its shared loopback ingress origin.
+For production use `COLOR_KITCHEN_ORIGIN=https://www.color-kitchen.com` and `COLOR_KITCHEN_INDEXING=true`. If hosted staging is added, set its own HTTPS origin and `COLOR_KITCHEN_INDEXING=false`. For a local Docker release, use the loopback URL visitors actually open, including its mapped port. The release rehearsal can use its shared loopback ingress origin.
 
 ## Google Cloud production
 
@@ -26,7 +26,7 @@ Set the production origin and indexing flag on the selected Google Cloud service
 | `DATABASE_URL` | Connection URL for the migrated PostgreSQL database, using the app’s runtime database user. Reference it from Secret Manager. |
 | `HOST` | `0.0.0.0`. The repository’s Docker image already sets this. |
 | `PORT` | Do **not** set `PORT` in the Cloud Run environment variable list; Cloud Run injects `8080` by default. If you want `3000`, set Cloud Run’s **Container port** to `3000`. |
-| `COLOR_KITCHEN_ORIGIN` | `https://color-kitchen.com` once the custom domain is serving the app. While testing, use your exact Cloud Run `https://…run.app` URL without any path. |
+| `COLOR_KITCHEN_ORIGIN` | `https://www.color-kitchen.com` once the custom `www` domain is serving the app (with apex `color-kitchen.com` redirecting via `301` to `https://www.color-kitchen.com`). While testing, use your exact Cloud Run `https://…run.app` URL without any path. |
 | `COLOR_KITCHEN_INDEXING` | `false` for the test service. Set `true` when the production domain is ready for indexing. |
 | `COLOR_KITCHEN_MEASUREMENT` | `false` for the initial deployment. Set `true` when enabling consented palette usage measurement. |
 

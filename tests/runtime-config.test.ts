@@ -27,11 +27,11 @@ test('deployment origin is explicit and independent of binding, indexing, and da
   assert.throws(() => runtimeFromEnvironment({ COLOR_KITCHEN_INDEXING: 'maybe' }), /COLOR_KITCHEN_INDEXING/);
   assert.throws(() => runtimeFromEnvironment({ COLOR_KITCHEN_DB_POOL_MAX: '-1' }), /COLOR_KITCHEN_DB_POOL_MAX/);
   const runtime = runtimeFromEnvironment({
-    NODE_ENV: 'production', HOST: '0.0.0.0', PORT: '8080', COLOR_KITCHEN_ORIGIN: 'https://color-kitchen.com/',
+    NODE_ENV: 'production', HOST: '0.0.0.0', PORT: '8080', COLOR_KITCHEN_ORIGIN: 'https://www.color-kitchen.com/',
     COLOR_KITCHEN_INDEXING: 'false', COLOR_KITCHEN_DB_POOL_MAX: '4',
     COLOR_KITCHEN_DB_CONNECT_TIMEOUT_MS: '8000', COLOR_KITCHEN_DB_STATEMENT_TIMEOUT_MS: '9000',
   });
-  assert.equal(runtime.origin, 'https://color-kitchen.com');
+  assert.equal(runtime.origin, 'https://www.color-kitchen.com');
   assert.equal(runtime.port, 8080);
   assert.equal(runtime.indexing, false);
   assert.deepEqual(runtime.pool, { max: 4, connectionTimeoutMillis: 8000, statement_timeout: 9000 });
@@ -41,7 +41,7 @@ test('deployment origin is explicit and independent of binding, indexing, and da
 });
 
 test('configured HTTPS origin controls SEO and cookies through a separate internal listener', async () => {
-  const deploy = 'https://color-kitchen.com';
+  const deploy = 'https://www.color-kitchen.com';
   await withMigratedDatabase(async client => {
     await seedCatalog(client, sampleCatalog);
     const dependencies = { async withClient<T>(work: (db: typeof client) => Promise<T>) { return work(client); } };
